@@ -7,7 +7,7 @@ from pathlib import Path
 from .config import Config
 from .jump import resume_command
 from .live import read_live
-from .projects import ProjectResolver, family_of, related_projects
+from .projects import ProjectRef, ProjectResolver, family_of, related_projects
 from .status import compute_state
 from .store import Mark, Store
 from .summarizer import Summarizer, build_prompt
@@ -116,6 +116,40 @@ class Board:
                    for n in {root, "~" + root[len(home):] if root.startswith(home + "/") else root}]
         return any(n in c for c in t.commands for n in needles)
 
+    def _by_files(self, t: Transcript, ref: ProjectRef, cwd: str) -> ProjectRef:
+        """Розмова, що почалась в одній теці, а працювала здебільшого з файлами вашого проєкту з панелі «Проєкти»,
+        належить тому проєкту. Кожна згадка шляху (файл чи команда) зараховується найглибшій теці; батьківська
+        тека теки старту розмову не забирає. Потрібно щонайменше 5 згадок і вдвічі більше, ніж у теки старту."""
+        if not self.resolver.user or not cwd:
+            return ref
+        home = str(self.cfg.home)
+
+        def under(value: str, root: str) -> bool:
+            forms = [root] + (["~" + root[len(home):]] if root.startswith(home + "/") else [])
+            return any(value == r or (r + "/") in value or value.endswith(" " + r) for r in forms)
+
+        start = ref.root or cwd
+        roots = sorted({r for r, _ in self.resolver.user} | {start}, key=len, reverse=True)
+        score: dict[str, int] = {}
+        for value in (*t.files, *t.commands):
+            root = next((r for r in roots if under(value, r)), None)
+            if root:
+                score[root] = score.get(root, 0) + 1
+        names = dict(self.resolver.user)
+        candidates = [(n, r) for r, n in score.items()
+                      if r != start and r in names and not (cwd == r or cwd.startswith(r + "/"))]
+        if not candidates:
+            return ref
+        best_n, best = max(candidates)
+        # Вкладений проєкт важливіший за батьківський, якщо має хоча б половину його згадок (~/studio і ~/studio/brands/x).
+        for n, r in sorted(candidates, key=lambda x: -len(x[1])):
+            if r.startswith(best + "/") and 2 * n >= best_n and n >= 5:
+                best_n, best = n, r
+                break
+        if best_n >= 5 and best_n > 2 * score.get(start, 0):
+            return ProjectRef(names[best], None, "user", best)
+        return ref
+
     def _build(self, now: float) -> list[dict]:
         marks = self.store.marks()
         project_icons = self.store.project_icons()
@@ -130,7 +164,7 @@ class Board:
             if t.sdk or (not t.humans and not (lv and lv.kind == "interactive")):
                 continue  # SDK, закриті без реплік і порожні фонові сесії не показуємо
             cwd = t.cwd or (lv.cwd if lv else "") or ""
-            rows.append((sid, t, lv, cwd, self.resolver.resolve(cwd)))
+            rows.append((sid, t, lv, cwd, self._by_files(t, self.resolver.resolve(cwd), cwd)))
         excluded_families = set(self.cfg.summary_exclude_families)
         known = sorted({ref.name for *_, ref in rows if ref.kind != "dir"})
         self.known_public = [p for p in known if family_of(p, self.cfg.families)[0] not in excluded_families]

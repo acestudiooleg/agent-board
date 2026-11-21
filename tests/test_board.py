@@ -231,6 +231,23 @@ class BoardTest(unittest.TestCase):
         cards = self.cards()
         self.assertEqual((cards["g1"]["summary_mode"], cards["g2"]["summary_mode"]), ("excluded", "excluded"))
 
+    def test_chat_goes_to_user_project_it_worked_in(self):
+        tutor, hist = self.home / "server/tutor-app", self.home / "studio/brands/hist"
+        hist.mkdir(parents=True)
+        projects = self.claude / "projects" / "p10"
+        many = [("t%d" % i, "Bash", {"command": f"ls ~/studio/brands/hist/ep{i}"}) for i in range(6)]
+        write_lines(projects / "h1.jsonl", [human("канал історії", ts=iso(self.old), cwd=str(tutor)),
+                                            assistant("ok", tools=many, ts=iso(self.old), cwd=str(tutor))])
+        write_lines(projects / "h2.jsonl", [human("трохи глянь", ts=iso(self.old), cwd=str(tutor)),
+                                            assistant("ok", tools=many[:2], ts=iso(self.old), cwd=str(tutor))])
+        board = self.make()
+        board.store.save_project(str(hist), "Історія")
+        board.resolver.set_user(board.store.projects())
+        board.scan()
+        cards = self.cards()
+        self.assertEqual((cards["h1"]["project"], cards["h1"]["project_kind"]), ("Історія", "user"))
+        self.assertEqual(cards["h2"]["project"], "tutor-app")  # дві згадки — замало
+
     def test_prepare_refuses_card_that_became_excluded(self):
         board = self.make(summary_enabled=True, summary_quiet_seconds=10**9)
         board.scan()
