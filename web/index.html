@@ -299,6 +299,13 @@ header h1{display:flex;align-items:center;gap:10px}
 /* Пошук і панель проєктів */
 #filters{display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:12px 20px}
 #filters #chips{padding:0}
+.pj-icon{min-width:30px;padding:1px 6px !important;font-size:15px !important}
+.pj-icons{display:flex;flex-wrap:wrap;gap:4px;padding:6px 10px 10px;align-items:center}
+.pj-icons button{font-size:16px;padding:2px 6px}
+.pj-icons input{width:70px;font:inherit;padding:3px 8px;border-radius:8px;border:1px solid var(--line-hi);background:rgba(8,20,40,.55);color:var(--ink)}
+#subchips{display:flex;gap:6px;flex-wrap:wrap;flex-basis:100%}
+#subchips:empty{display:none}
+#subchips .chip{font-size:12px;padding:3px 10px}
 #q{font:inherit;font-size:13px;width:260px;max-width:100%;padding:6px 12px;border-radius:999px;border:1px solid var(--line-hi);
   background:rgba(8,20,40,.55);color:var(--ink);outline:none}
 #q:focus{border-color:var(--cyan);box-shadow:0 0 12px rgba(67,230,255,.25)}
@@ -320,11 +327,11 @@ header h1{display:flex;align-items:center;gap:10px}
 <canvas id="stars" aria-hidden="true"></canvas><div class="planet" aria-hidden="true"></div><div class="moon" aria-hidden="true"></div><div class="planet2" aria-hidden="true"></div><div class="planet3" aria-hidden="true"></div>
 <div class="aurora" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></div>
 <header><h1><img id="board-icon" src="/icon" alt="" onerror="this.replaceWith(document.createTextNode('👥'))"><span id="board">Команда</span></h1><span id="stats"></span><button id="projects-btn" style="margin-left:auto" title="Ваші проєкти: назва й тека">🗂 Проєкти</button><button id="theme" title="Перемкнути тему"></button><label><input type="checkbox" id="archive"> показати архів</label></header>
-<div id="filters"><input id="q" type="search" placeholder="Пошук карток…  ( / )" autocomplete="off"><div id="chips"></div></div>
+<div id="filters"><input id="q" type="search" placeholder="Пошук карток…  ( / )" autocomplete="off"><div id="chips"></div><div id="subchips"></div></div>
 <main><div id="room"></div></main><aside id="panel"><div id="panel-actions"></div><div id="panel-body"></div></aside>
 <div id="toast"></div>
 <script>
-const S = {cards: [], family: "Усі", q: "", view: location.hash === "#projects" ? "projects" : null, projects: null, pjEdit: null,
+const S = {cards: [], family: "Усі", project: null, q: "", view: location.hash === "#projects" ? "projects" : null, projects: null, pjEdit: null,
   sel: location.hash === "#projects" ? null : decodeURIComponent(location.hash.slice(1)) || null, haiku: {}, html: {}, board: "Команда"};
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"}[c]));
 // Короткі уривки на картках — без Markdown-розмітки
@@ -419,7 +426,7 @@ function cardHtml(c) {
   const old = c.old_tab_live ? `<div class="raw">🗂 стара вкладка цієї розмови ще відкрита</div>` : "";
   const a = ask(c);
   return `<div class="card ${c.state} ${S.sel === c.id ? "sel" : ""}" data-id="${esc(c.id)}">
-    <div class="top"><span class="name">${esc(c.icon)} ${esc(c.name || c.project)}</span><span class="age">${age(c.last_activity)}</span></div>
+    <div class="top"><span class="name">${esc(c.project_icon || c.icon)} ${esc(c.name || c.project)}</span><span class="age">${age(c.last_activity)}</span></div>
     <div class="proj">${esc(c.family)} · ${esc(c.project)}${c.worktree ? " / " + esc(c.worktree) : ""}${rel}</div>
     <div class="title">${esc(cut(headline(c), 120))}</div>
     ${a ? `<div class="ask">${esc(a)}</div>` : ""}${warn}${old}${note(c)}</div>`;
@@ -437,7 +444,7 @@ function rowHtml(c) {
   const tag = c.summary_mode === "excluded" ? "🔒" : c.related?.length ? "також: " + c.related.join(", ") : "";
   return `<div class="row card ${c.state} ${S.sel === c.id ? "sel" : ""}" data-id="${esc(c.id)}">
     <span class="time">${time}</span>
-    <span class="rp">${esc(c.icon)} ${esc(c.project)}${c.worktree ? " / " + esc(c.worktree) : ""}</span>
+    <span class="rp">${esc(c.project_icon || c.icon)} ${esc(c.project)}${c.worktree ? " / " + esc(c.worktree) : ""}</span>
     <span class="rt">${esc(cut(headline(c), 140))}</span>
     <span class="rn">${esc(tag)}</span></div>`;
 }
@@ -452,7 +459,7 @@ function listHtml(list) {
 }
 function chipHtml(c) {
   const until = c.state === "snoozed" && c.mark?.until ? ` · до ${new Date(c.mark.until * 1000).toLocaleDateString("uk")}` : "";
-  return `<div class="card ${c.state} ${S.sel === c.id ? "sel" : ""}" data-id="${esc(c.id)}">${esc(c.icon)} ${esc(c.project)} · ${esc(cut(headline(c), 50))} · ${age(c.last_activity)}${until}</div>`;
+  return `<div class="card ${c.state} ${S.sel === c.id ? "sel" : ""}" data-id="${esc(c.id)}">${esc(c.project_icon || c.icon)} ${esc(c.project)} · ${esc(cut(headline(c), 50))} · ${age(c.last_activity)}${until}</div>`;
 }
 function haikuText() {
   const h = S.haiku || {};
@@ -465,7 +472,7 @@ function render() {
   const terms = S.q.toLowerCase().split(/\s+/).filter(Boolean);
   const hay = c => [c.title, c.summary?.about, c.summary?.waiting_for, c.project, c.worktree, c.family, c.name,
                     c.first_user, c.last_user, c.last_agent, c.cwd].join(" ").toLowerCase();
-  const cards = S.cards.filter(c => (S.family === "Усі" || c.family === S.family) && terms.every(t => hay(c).includes(t)));
+  const cards = S.cards.filter(c => (S.family === "Усі" || c.family === S.family) && (!S.project || c.project === S.project) && terms.every(t => hay(c).includes(t)));
   const live = S.cards.filter(c => c.live_status).length;
   const waiting = S.cards.filter(c => c.state === "waiting").length;
   document.getElementById("stats").textContent = `${live} живих · ${waiting} чекають на вас` + haikuText();
@@ -476,6 +483,14 @@ function render() {
   const fams = ["Усі", ...Object.keys(counts).sort((a, b) => counts[b] - counts[a])];
   setHtml("chips", fams.map(f =>
     `<button class="chip ${S.family === f ? "on" : ""}" data-f="${esc(f)}">${f === "Усі" ? "Усі" : esc(icons[f]) + " " + esc(f) + " " + counts[f]}</button>`).join(""));
+  // Другий ряд: проєкти всередині вибраної родини, якщо їх більше одного.
+  const pcounts = {}, pIcons = {};
+  S.cards.forEach(c => { if (c.project_icon) pIcons[c.project] = c.project_icon; });
+  if (S.family !== "Усі") S.cards.forEach(c => { if (c.family === S.family && !["done", "snoozed"].includes(c.state)) pcounts[c.project] = (pcounts[c.project] || 0) + 1; });
+  const projs = Object.keys(pcounts).sort((a, b) => pcounts[b] - pcounts[a]);
+  if (S.project && !pcounts[S.project]) S.project = null;
+  setHtml("subchips", projs.length < 2 ? "" : [`<button class="chip ${S.project ? "" : "on"}" data-p="">усі проєкти</button>`,
+    ...projs.map(p => `<button class="chip ${S.project === p ? "on" : ""}" data-p="${esc(p)}">${pIcons[p] ? esc(pIcons[p]) + " " : ""}${esc(p)} ${pcounts[p]}</button>`)].join(""));
   setHtml("room", ZONES.filter(z => !z.archive || showArchive).map(z => {
     const list = cards.filter(c => z.states.includes(c.state));
     if (!list.length) return "";
@@ -484,14 +499,18 @@ function render() {
   }).join("") || `<p class="raw">Тут поки порожньо.</p>`);
   renderPanel();
 }
+const ICONS = ["🩻","🧠","🏥","📄","📊","🧪","🛠","⚙️","🚀","🛒","🌐","📱","🤖","🎬","📚","🎨","🏠","💡","🔒","🧾","📦","🗂","⭐","🔥"];
 function projectsHtml() {
   const P = S.projects;
   if (!P) return `<p class="raw">Завантажую…</p>`;
   const e = S.pjEdit || {name: "", path: "", old: ""};
-  const row = (p, user) => `<div class="pj-row"><b>${esc(p.name)}</b><span class="pj-path">${esc(p.path)}</span>
+  const row = (p, user) => `<div class="pj-row"><b><button class="pj-icon" data-act="pj-icon" data-name="${esc(p.name)}" title="Змінити значок">${esc(p.icon || "＋")}</button> ${esc(p.name)}</b><span class="pj-path">${esc(p.path)}</span>
       <span class="pj-count">${p.count} розм.</span>
       <span>${user ? `<button data-act="pj-edit" data-path="${esc(p.path)}" data-name="${esc(p.name)}">✎</button> <button data-act="pj-del" data-path="${esc(p.path)}" title="Видалити">✕</button>`
-                    : `<button data-act="pj-adopt" data-path="${esc(p.path)}" data-name="${esc(p.name)}" title="Перейменувати / змінити теку">✎</button>`}</span></div>`;
+                    : `<button data-act="pj-adopt" data-path="${esc(p.path)}" data-name="${esc(p.name)}" title="Перейменувати / змінити теку">✎</button>`}</span></div>
+      ${S.iconFor === p.name ? `<div class="pj-icons">${ICONS.map(i => `<button data-act="pj-seticon" data-name="${esc(p.name)}" data-icon="${i}">${i}</button>`).join("")}
+        <input id="pj-icon-own" maxlength="8" placeholder="свій" value="${esc(p.icon || "")}"><button data-act="pj-seticon-own" data-name="${esc(p.name)}">OK</button>
+        <button data-act="pj-seticon" data-name="${esc(p.name)}" data-icon="" title="Повернути значок родини">прибрати</button></div>` : ""}`;
   return `<div class="top"><b>🗂 Проєкти</b><button data-act="close">✕</button></div>
     <h2>${e.old ? "Редагувати проєкт" : "Новий проєкт"}</h2>
     <div class="pj-form"><input id="pj-name" placeholder="Назва" value="${esc(e.name)}"><input id="pj-path" placeholder="Тека: ~/server/... або /home/..." value="${esc(e.path)}">
@@ -513,7 +532,7 @@ function renderPanel() {
   const s = c.summary || {};
   const done = (s.done || []).map(x => `<li>${esc(x)}</li>`).join("");
   const archived = ["done", "snoozed"].includes(c.state);
-  setHtml("panel-body", `<div class="top"><b>${esc(c.icon)} ${esc(c.name || c.project)}</b><button data-act="close">✕</button></div>
+  setHtml("panel-body", `<div class="top"><b>${esc(c.project_icon || c.icon)} ${esc(c.name || c.project)}</b><button data-act="close">✕</button></div>
     <div class="state-pill">${esc(STATE[c.state] || c.state)}${c.state === "snoozed" && c.mark?.until ? " до " + new Date(c.mark.until * 1000).toLocaleDateString("uk") : ""}</div>
     <div class="proj">${esc(c.family)} / ${esc(c.project)}${c.worktree ? " · worktree " + esc(c.worktree) : ""}${c.branch ? " · " + esc(c.branch) : ""} · ${c.live_status ? "жива, " + esc(c.live_status) : "закрита"} · ${age(c.last_activity)} тому</div>
     <div class="proj">${esc(c.cwd)}</div>
@@ -551,6 +570,15 @@ async function projectAct(a, btn) {
     return render();
   }
   if (a === "pj-cancel") { S.pjEdit = null; return render(); }
+  if (a === "pj-icon") { S.iconFor = S.iconFor === btn.dataset.name ? null : btn.dataset.name; return render(); }
+  if (a === "pj-seticon" || a === "pj-seticon-own") {
+    const icon = a === "pj-seticon" ? btn.dataset.icon : document.getElementById("pj-icon-own").value.trim();
+    const r = await fetch("/api/projects", {method: "POST", headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({action: "icon", name: btn.dataset.name, icon})});
+    const data = await r.json();
+    if (!r.ok) return toast(data.error || "Не вдалося змінити значок");
+    S.projects = data; S.iconFor = null; return render();
+  }
   if (a === "pj-del") {
     S.projects = await post("/api/projects", {action: "delete", path: btn.dataset.path});
     toast("Проєкт видалено"); return render();
@@ -595,7 +623,8 @@ async function act(a, btn) {
 }
 document.addEventListener("click", e => {
   const chip = e.target.closest(".chip");
-  if (chip) { S.family = chip.dataset.f; return render(); }
+  if (chip?.dataset.p !== undefined) { S.project = chip.dataset.p || null; return render(); }
+  if (chip) { S.family = chip.dataset.f; S.project = null; return render(); }
   const button = e.target.closest("[data-act]");
   if (button) return act(button.dataset.act, button);
   if (e.target.closest("input")) return;

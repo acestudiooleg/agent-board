@@ -31,6 +31,7 @@ class Store:
                     until REAL, at_activity REAL NOT NULL);
                 CREATE TABLE IF NOT EXISTS calls(ts REAL NOT NULL);
                 CREATE TABLE IF NOT EXISTS projects(path TEXT PRIMARY KEY, name TEXT NOT NULL);
+                CREATE TABLE IF NOT EXISTS project_icons(name TEXT PRIMARY KEY, icon TEXT NOT NULL);
                 """
             )
 
@@ -93,6 +94,19 @@ class Store:
     def delete_project(self, path: str) -> None:
         with self._lock, self._db:
             self._db.execute("DELETE FROM projects WHERE path = ?", (path,))
+
+    def project_icons(self) -> dict[str, str]:
+        """Значки проєктів за назвою: і ваших, і знайдених автоматично."""
+        with self._lock:
+            return dict(self._db.execute("SELECT name, icon FROM project_icons"))
+
+    def set_project_icon(self, name: str, icon: str) -> None:
+        """Порожній значок прибирає власний: тоді показується значок родини."""
+        with self._lock, self._db:
+            if icon:
+                self._db.execute("INSERT OR REPLACE INTO project_icons VALUES (?, ?)", (name, icon))
+            else:
+                self._db.execute("DELETE FROM project_icons WHERE name = ?", (name,))
 
     def close(self) -> None:
         with self._lock:

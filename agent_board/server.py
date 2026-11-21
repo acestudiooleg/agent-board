@@ -156,7 +156,14 @@ def make_handler(board: Board, cfg: Config, launcher=subprocess.Popen, terminato
             return self._json(404, {"error": "not found"})
 
         def _projects(self, body: dict):
-            """{action: save, path, name, old_path?} | {action: delete, path}. Тека — абсолютна або з ~."""
+            """{action: save, path, name, old_path?} | {action: delete, path} | {action: icon, name, icon}.
+            Тека — абсолютна або з ~."""
+            if body.get("action") == "icon":
+                name, icon = body.get("name"), body.get("icon", "")
+                if not isinstance(name, str) or not name.strip() or not isinstance(icon, str) or len(icon.strip()) > 8:
+                    return self._json(400, {"error": "потрібні назва проєкту й значок (до 8 символів)"})
+                board.set_project_icon(name.strip(), icon.strip())
+                return self._json(200, board.projects_overview())
             def norm(value):
                 if not isinstance(value, str) or not value.strip():
                     return None

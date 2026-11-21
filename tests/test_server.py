@@ -161,6 +161,15 @@ class ServerTest(unittest.TestCase):
         self.assertEqual(json.loads(body)["user"], [])
         self.assertEqual(self.board.card("aaa")["project"], "x")
 
+    def test_project_icon_api(self):
+        status, _, body = self.req("POST", "/api/projects", {"action": "icon", "name": "x", "icon": "🚀"})
+        self.assertEqual(status, 200)
+        self.assertEqual(json.loads(body)["detected"][0]["icon"], "🚀")
+        self.assertEqual(self.board.card("aaa")["project_icon"], "🚀")
+        self.assertEqual(self.req("POST", "/api/projects", {"action": "icon", "name": "x", "icon": "x" * 9})[0], 400)
+        self.req("POST", "/api/projects", {"action": "icon", "name": "x", "icon": ""})
+        self.assertIsNone(self.board.card("aaa")["project_icon"])
+
     def test_unknown_path(self):
         self.assertEqual(self.req("GET", "/nope")[0], 404)
 

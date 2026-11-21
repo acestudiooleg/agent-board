@@ -118,6 +118,7 @@ class Board:
 
     def _build(self, now: float) -> list[dict]:
         marks = self.store.marks()
+        project_icons = self.store.project_icons()
         copies = self._copies()
         live_copies = {target for sid, target in copies.items() if sid in self.live}
         rows = []
@@ -151,7 +152,7 @@ class Board:
                 "id": sid,
                 "title": t.title or (summary or {}).get("about") or (t.first_user or "")[:80] or (lv.name if lv else sid[:8]),
                 "name": lv.name if lv else None,
-                "project": ref.name, "worktree": ref.worktree, "family": family, "icon": icon,
+                "project": ref.name, "worktree": ref.worktree, "family": family, "icon": icon, "project_icon": project_icons.get(ref.name),
                 "project_root": ref.root, "project_kind": ref.kind,
                 "cwd": cwd, "branch": t.branch,
                 "resume": resume_command(cwd if cwd.startswith("/") else "", sid, self.cfg.config_dir_env()),
@@ -250,22 +251,28 @@ class Board:
     def projects_overview(self) -> dict:
         """Ваші проєкти й знайдені автоматично, з кількістю розмов у кожному."""
         cards = self.snapshot()[1]
+        icons = self.store.project_icons()
         user = []
         for path, name in self.store.projects():
             count = sum(1 for c in cards if c["project_kind"] == "user" and c["project_root"] == path)
-            user.append({"path": path, "name": name, "count": count})
+            user.append({"path": path, "name": name, "count": count, "icon": icons.get(name)})
         detected: dict[tuple[str, str], int] = {}
         for c in cards:
             if c["project_kind"] != "user" and c["project_root"]:
                 key = (c["project"], c["project_root"])
                 detected[key] = detected.get(key, 0) + 1
         return {"user": user,
-                "detected": [{"name": n, "path": p, "count": k} for (n, p), k in sorted(detected.items(), key=lambda x: -x[1])]}
+                "detected": [{"name": n, "path": p, "count": k, "icon": icons.get(n)} for (n, p), k in sorted(detected.items(), key=lambda x: -x[1])]}
 
     def save_project(self, path: str, name: str, old_path: str | None = None) -> None:
         with self._lock:
             self.store.save_project(path, name, old_path)
             self.resolver.set_user(self.store.projects())
+            self._publish(self._build(time.time()))
+
+    def set_project_icon(self, name: str, icon: str) -> None:
+        with self._lock:
+            self.store.set_project_icon(name, icon)
             self._publish(self._build(time.time()))
 
     def delete_project(self, path: str) -> None:
