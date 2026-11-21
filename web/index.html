@@ -486,7 +486,9 @@ function render() {
   // Другий ряд: проєкти всередині вибраної родини, якщо їх більше одного.
   const pcounts = {}, pIcons = {};
   S.cards.forEach(c => { if (c.project_icon) pIcons[c.project] = c.project_icon; });
-  if (S.family !== "Усі") S.cards.forEach(c => { if (c.family === S.family && !["done", "snoozed"].includes(c.state)) pcounts[c.project] = (pcounts[c.project] || 0) + 1; });
+  // Родина для другого ряду: вибрана, а якщо на дошці лише одна родина — вона, без додаткового кліку.
+  const famKeys = Object.keys(counts), pf = S.family !== "Усі" ? S.family : famKeys.length === 1 ? famKeys[0] : null;
+  if (pf) S.cards.forEach(c => { if (c.family === pf && !["done", "snoozed"].includes(c.state)) pcounts[c.project] = (pcounts[c.project] || 0) + 1; });
   const projs = Object.keys(pcounts).sort((a, b) => pcounts[b] - pcounts[a]);
   if (S.project && !pcounts[S.project]) S.project = null;
   setHtml("subchips", projs.length < 2 ? "" : [`<button class="chip ${S.project ? "" : "on"}" data-p="">усі проєкти</button>`,
