@@ -55,10 +55,10 @@ class StoreTest(unittest.TestCase):
     def test_project_icons(self):
         with tempfile.TemporaryDirectory() as tmp:
             store = self.open(Path(tmp) / "b.db")
-            store.set_project_icon("ohif", "🩻")
+            store.set_project_icon("viewer", "🩻")
             store.set_project_icon("tpl", "📄")
             store.set_project_icon("tpl", "")  # порожній — прибрати
-            self.assertEqual(store.project_icons(), {"ohif": "🩻"})
+            self.assertEqual(store.project_icons(), {"viewer": "🩻"})
 
     def test_db_is_private(self):
         with tempfile.TemporaryDirectory() as tmp:
