@@ -1,0 +1,16 @@
+# Зразок робочої дошки: окремий акаунт Claude зі своєю текою налаштувань (CLAUDE_CONFIG_DIR).
+# Haiku для будь-якої claude_dir, крім ~/.claude, вимикається примусово.
+[board]
+board_name = "Work"
+icon = "assets/work.svg"
+planet = "mars"
+port = 8092
+claude_dir = "~/.claude-work"
+db_path = "~/.local/share/agent-board/work.db"
+max_age_days = 14
+summary_enabled = false
+
+[[family]]
+name = "Work"
+icon = "💼"
+projects = ["work-api", "work-web"]

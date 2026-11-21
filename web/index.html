@@ -1,0 +1,719 @@
+<!doctype html>
+<html lang="uk">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Команда</title>
+<link rel="icon" href="/icon">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Exo+2:wght@300;400;500;600&family=JetBrains+Mono:wght@400&display=swap" rel="stylesheet">
+<style>
+/* «Нічна обсерваторія»: темне небо, напівпрозорі голографічні панелі, біолюмінесцентні акценти */
+:root{
+  --void:#03060f;--deep:#071226;--glass:rgba(12,34,58,.55);--glass-hi:rgba(18,52,84,.72);
+  --ink:#d8f3ff;--muted:#7fa7c2;--line:rgba(110,220,255,.22);--line-hi:rgba(120,235,255,.6);
+  --cyan:#43e6ff;--teal:#2dd4bf;--amber:#c38bff;--violet:#7aa2ff;--rose:#ff6b9a;
+  --glow-cyan:0 0 0 1px rgba(67,230,255,.35),0 0 18px rgba(67,230,255,.18),inset 0 0 22px rgba(67,230,255,.06);
+  --glow-amber:0 0 0 1px rgba(195,139,255,.55),0 0 22px rgba(195,139,255,.25),inset 0 0 22px rgba(195,139,255,.08);
+  --glow-violet:0 0 0 1px rgba(122,162,255,.45),0 0 18px rgba(122,162,255,.2),inset 0 0 22px rgba(122,162,255,.06);
+  --panel-w:50vw;
+}
+*{box-sizing:border-box}
+body{margin:0;min-height:100vh;color:var(--ink);font:14px/1.5 "Exo 2",system-ui,sans-serif;letter-spacing:.01em;background:transparent}
+html{min-height:100%;
+  background:
+    radial-gradient(1px 1px at 12% 18%,#fff8 50%,transparent 51%),radial-gradient(1px 1px at 72% 9%,#fff9 50%,transparent 51%),
+    radial-gradient(1.5px 1.5px at 38% 62%,#bff6 50%,transparent 51%),radial-gradient(1px 1px at 88% 44%,#fff7 50%,transparent 51%),
+    radial-gradient(1px 1px at 22% 83%,#9ef8 50%,transparent 51%),radial-gradient(1.5px 1.5px at 58% 31%,#fff6 50%,transparent 51%),
+    radial-gradient(1px 1px at 93% 78%,#cff7 50%,transparent 51%),radial-gradient(1px 1px at 5% 50%,#fff5 50%,transparent 51%),
+    radial-gradient(ellipse 70% 50% at 80% 0%,rgba(67,120,255,.18),transparent 70%),
+    radial-gradient(ellipse 60% 50% at 0% 100%,rgba(45,212,191,.13),transparent 70%),
+    radial-gradient(ellipse 50% 40% at 50% 50%,rgba(122,162,255,.07),transparent 70%),
+    linear-gradient(180deg,#050c1c,#02050c);
+  background-attachment:fixed}
+::selection{background:rgba(67,230,255,.35)}
+::-webkit-scrollbar{width:8px;height:8px}::-webkit-scrollbar-thumb{background:rgba(67,230,255,.25);border-radius:8px}
+header{display:flex;gap:18px;align-items:center;flex-wrap:wrap;padding:14px 20px;border-bottom:1px solid var(--line);
+  background:linear-gradient(90deg,rgba(67,230,255,.08),transparent 60%);backdrop-filter:blur(6px);position:sticky;top:0;z-index:5}
+header h1{font-size:18px;margin:0;font-weight:600;letter-spacing:.18em;text-transform:uppercase;color:var(--cyan)}
+#stats{color:var(--muted);font-size:13px;letter-spacing:.06em}
+#stats::before{content:"";display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--teal);box-shadow:0 0 8px var(--teal);margin-right:8px;animation:pulse 2.4s ease-in-out infinite}
+@keyframes pulse{50%{opacity:.35}}
+label{color:var(--muted);font-size:13px;cursor:pointer}
+input[type=checkbox]{accent-color:var(--cyan)}
+#chips{display:flex;gap:8px;flex-wrap:wrap;padding:12px 20px}
+.chip{border:1px solid var(--line);background:rgba(12,34,58,.4);color:var(--ink);padding:4px 12px;border-radius:999px;cursor:pointer;font:inherit;font-size:13px;transition:.2s}
+.chip:hover{border-color:var(--line-hi);box-shadow:0 0 12px rgba(67,230,255,.25)}
+.chip.on{background:rgba(67,230,255,.16);border-color:var(--cyan);color:#fff;box-shadow:0 0 14px rgba(67,230,255,.35)}
+main{padding:0 20px 28px;transition:margin-right .25s}
+body.panel-open main{margin-right:var(--panel-w)}
+#room{min-width:0}
+h2{font-size:11px;font-weight:500;text-transform:uppercase;letter-spacing:.22em;color:var(--muted);margin:22px 0 10px;display:flex;align-items:center;gap:10px}
+h2::after{content:"";flex:1;height:1px;background:linear-gradient(90deg,var(--line-hi),transparent)}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:14px}
+.card{position:relative;background:linear-gradient(160deg,var(--glass-hi),var(--glass));border:none;border-radius:14px;padding:12px 14px;cursor:pointer;
+  box-shadow:var(--glow-cyan);backdrop-filter:blur(8px);transition:transform .15s,box-shadow .2s}
+.card::before{content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;
+  background:linear-gradient(120deg,rgba(255,255,255,.06),transparent 35%);}
+.card:hover{transform:translateY(-2px)}
+.card.waiting{box-shadow:var(--glow-amber)}
+.card.waiting .name{color:var(--amber)}
+.card.working{box-shadow:var(--glow-cyan)}
+.card.working .name{color:var(--cyan)}
+.card.waiting_bg,.card.idle_live{box-shadow:var(--glow-violet)}
+.card.waiting_bg .name{color:var(--violet)}
+.card.sel{outline:2px solid var(--cyan);outline-offset:2px}
+.top{display:flex;justify-content:space-between;gap:8px;align-items:baseline}
+.name{font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.age{white-space:nowrap;color:var(--muted);font-size:12px;font-family:"JetBrains Mono",monospace}
+.proj{font-size:12px;margin-top:2px;color:var(--muted);overflow-wrap:anywhere}
+.badge{display:inline-block;border:1px solid var(--line);color:var(--teal);border-radius:999px;padding:0 7px;margin:2px 0 0 4px;font-size:10.5px;letter-spacing:.04em}
+.title{margin-top:8px;font-weight:500}
+.ask{margin-top:8px;padding:6px 9px;border-radius:8px;background:rgba(3,10,22,.45);border-left:2px solid var(--line-hi);font-size:13px}
+.card.waiting .ask{border-left-color:var(--amber)}
+.warn{margin-top:8px;padding:5px 9px;border-radius:8px;background:rgba(195,139,255,.1);border-left:2px solid var(--amber);font-size:12px}
+.raw{font-size:12px;margin-top:6px;color:var(--muted);overflow-wrap:anywhere}
+.compact{display:flex;flex-wrap:wrap;gap:8px}
+.compact .card{padding:5px 12px;opacity:.8;box-shadow:0 0 0 1px var(--line);border-radius:999px}
+.day{font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--teal);margin:16px 0 6px;font-weight:500}
+.day:first-child{margin-top:0}
+.list{display:flex;flex-direction:column;border-left:1px solid var(--line);margin-left:6px}
+.row{display:grid;grid-template-columns:52px minmax(120px,210px) 1fr auto;gap:12px;align-items:baseline;padding:7px 12px;cursor:pointer;
+  position:relative;border-radius:0 10px 10px 0;transition:background .15s}
+.row::before{content:"";position:absolute;left:-4px;top:50%;width:7px;height:7px;border-radius:50%;transform:translateY(-50%);
+  background:var(--deep);border:1px solid var(--line-hi)}
+.row:hover{background:rgba(67,230,255,.07)}
+.row:hover::before{background:var(--cyan);box-shadow:0 0 8px var(--cyan)}
+.row.sel{background:rgba(67,230,255,.12)}
+.row .time{color:var(--muted);font-family:"JetBrains Mono",monospace;font-size:12px}
+.row .rp{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13px;color:var(--muted)}
+.row .rt{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.row .rn{color:var(--teal);font-size:11.5px;white-space:nowrap;text-shadow:0 0 6px rgba(0,0,0,.8)}
+/* Панель звіту: пів екрана справа */
+#panel{position:fixed;top:0;right:0;width:var(--panel-w);height:100vh;display:none;flex-direction:column;z-index:10;
+  background:linear-gradient(200deg,rgba(14,40,68,.92),rgba(4,12,26,.95));backdrop-filter:blur(14px);
+  border-left:1px solid var(--line-hi);box-shadow:-20px 0 60px rgba(0,0,0,.55),-1px 0 24px rgba(67,230,255,.18)}
+#panel.open{display:flex}
+#panel-actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center;padding:14px 24px;border-bottom:1px solid var(--line);background:rgba(3,10,22,.4)}
+#panel-actions:empty{display:none}
+#panel-body{overflow-y:auto;padding:18px 28px 40px;flex:1}
+#panel-body .top b{font-size:20px;font-weight:600;color:var(--cyan);letter-spacing:.04em}
+#panel-body h2{margin-top:26px}
+.state-pill{display:inline-block;margin-top:10px;padding:4px 12px;border-radius:999px;border:1px solid var(--line-hi);background:rgba(67,230,255,.08);font-size:13px}
+/* Markdown */
+.md{font-size:14.5px;line-height:1.65;overflow-wrap:anywhere}
+.md p{margin:0 0 10px}
+.md h3,.md h4,.md h5{margin:16px 0 6px;color:#fff;font-weight:600;letter-spacing:.03em}
+.md h3{font-size:16px}.md h4{font-size:15px}.md h5{font-size:14px;color:var(--teal)}
+.md ul,.md ol{margin:4px 0 10px;padding-left:22px}
+.md li{margin:2px 0}
+.md li::marker{color:var(--cyan)}
+.md strong{color:#fff;font-weight:600}
+.md em{color:#bfe9ff}
+.md a{color:var(--cyan)}
+.md code{font-family:"JetBrains Mono",monospace;font-size:12.5px;background:rgba(67,230,255,.1);border:1px solid var(--line);border-radius:5px;padding:1px 5px;color:#aef3ff}
+.md pre{background:rgba(2,8,18,.75);border:1px solid var(--line);border-radius:10px;padding:12px 14px;overflow-x:auto;margin:6px 0 12px}
+.md pre code{background:none;border:none;padding:0;font-size:12.5px;color:#cfefff}
+.md blockquote{margin:6px 0 10px;padding:4px 12px;border-left:2px solid var(--violet);color:#cdbfff}
+.md table{border-collapse:collapse;margin:6px 0 12px;font-size:13px;display:block;overflow-x:auto}
+.md th,.md td{border:1px solid var(--line);padding:4px 8px;text-align:left}
+.md th{color:var(--cyan);font-weight:500}
+.md hr{border:none;border-top:1px solid var(--line);margin:12px 0}
+button,input[type=date]{font:inherit;font-size:13px;border:1px solid var(--line-hi);background:rgba(12,34,58,.6);color:var(--ink);border-radius:8px;padding:6px 12px;cursor:pointer;transition:.2s}
+button:disabled{opacity:.4;cursor:not-allowed}
+button:hover,input[type=date]:hover{box-shadow:0 0 12px rgba(67,230,255,.3);border-color:var(--cyan)}
+button.primary{background:linear-gradient(135deg,rgba(67,230,255,.85),rgba(45,212,191,.85));border-color:var(--cyan);color:#02131f;font-weight:600}
+input[type=date]{color-scheme:dark}
+#toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:rgba(8,26,44,.95);color:var(--ink);border:1px solid var(--cyan);
+  box-shadow:0 0 20px rgba(67,230,255,.35);padding:9px 16px;border-radius:10px;display:none;max-width:90vw;z-index:20}
+@media (max-width:900px){:root{--panel-w:100vw}body.panel-open main{margin-right:0}
+  .row{grid-template-columns:48px 1fr}.row .rp,.row .rn{display:none}}
+
+/* ===== Скло: туманності позаду, матові пластини попереду ===== */
+.aurora{position:fixed;inset:0;z-index:-1;overflow:hidden;pointer-events:none}
+.aurora i{position:absolute;border-radius:50%;filter:blur(60px);opacity:.9;animation:drift 38s ease-in-out infinite alternate}
+.aurora i:nth-child(1){width:55vw;height:55vw;left:-10vw;top:5vh;background:radial-gradient(circle,rgba(19,201,232,.75) 0%,rgba(19,201,232,.25) 40%,transparent 68%)}
+.aurora i:nth-child(2){width:50vw;height:50vw;right:-8vw;top:-12vh;background:radial-gradient(circle,rgba(123,92,255,.8) 0%,rgba(123,92,255,.25) 40%,transparent 68%);animation-duration:46s}
+.aurora i:nth-child(3){width:48vw;height:48vw;left:28vw;bottom:-16vh;background:radial-gradient(circle,rgba(31,107,255,.75) 0%,rgba(31,107,255,.2) 40%,transparent 68%);animation-duration:52s}
+.aurora i:nth-child(4){width:30vw;height:30vw;right:18vw;top:35vh;background:radial-gradient(circle,rgba(170,100,255,.5) 0%,rgba(170,100,255,.14) 40%,transparent 68%);animation-duration:44s}
+.aurora i:nth-child(5){width:34vw;height:34vw;left:8vw;bottom:-6vh;background:radial-gradient(circle,rgba(45,212,191,.6) 0%,transparent 66%);animation-duration:58s}
+@keyframes drift{0%{transform:translate(0,0) scale(1)}50%{transform:translate(6vw,4vh) scale(1.12)}100%{transform:translate(-4vw,8vh) scale(.95)}}
+@media (prefers-reduced-motion:reduce){.aurora i{animation:none}}
+:root{
+  --glass-fill:linear-gradient(145deg,rgba(255,255,255,.18),rgba(255,255,255,.05) 45%,rgba(140,230,255,.08));
+  --glass-edge:rgba(255,255,255,.28);
+  --glass-shine:inset 0 1px 0 rgba(255,255,255,.35),inset 0 -1px 0 rgba(255,255,255,.05),inset 1px 0 0 rgba(255,255,255,.12);
+}
+.card{background:var(--glass-fill);border:1px solid var(--glass-edge);
+  backdrop-filter:blur(22px) saturate(170%);-webkit-backdrop-filter:blur(22px) saturate(170%);
+  box-shadow:var(--glass-shine),0 10px 30px rgba(0,0,0,.35),0 0 0 1px rgba(67,230,255,.12)}
+.card::before{background:linear-gradient(115deg,rgba(255,255,255,.22) 0%,rgba(255,255,255,.04) 28%,transparent 42%);mix-blend-mode:screen}
+.card::after{content:"";position:absolute;left:14px;right:14px;top:0;height:1px;pointer-events:none;
+  background:linear-gradient(90deg,transparent,rgba(255,255,255,.7),transparent)}
+.card:hover{transform:translateY(-3px);box-shadow:var(--glass-shine),0 16px 40px rgba(0,0,0,.45),0 0 24px rgba(67,230,255,.25)}
+.card.waiting{border-color:rgba(195,139,255,.55);box-shadow:var(--glass-shine),0 10px 30px rgba(0,0,0,.35),0 0 26px rgba(195,139,255,.28)}
+.card.working{border-color:rgba(110,235,255,.5);box-shadow:var(--glass-shine),0 10px 30px rgba(0,0,0,.35),0 0 22px rgba(67,230,255,.25)}
+.card.waiting_bg,.card.idle_live{border-color:rgba(122,162,255,.5);box-shadow:var(--glass-shine),0 10px 30px rgba(0,0,0,.35),0 0 22px rgba(122,162,255,.25)}
+.ask{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-left:2px solid var(--line-hi);backdrop-filter:blur(6px)}
+.chip{background:rgba(255,255,255,.08);border:1px solid var(--glass-edge);backdrop-filter:blur(14px) saturate(160%);box-shadow:inset 0 1px 0 rgba(255,255,255,.25)}
+.chip.on{background:rgba(67,230,255,.22)}
+header{background:linear-gradient(180deg,rgba(255,255,255,.08),rgba(255,255,255,.02));backdrop-filter:blur(20px) saturate(160%);
+  border-bottom:1px solid var(--glass-edge);box-shadow:inset 0 -1px 0 rgba(255,255,255,.06)}
+.list{border-left:none;margin-left:0;gap:6px}
+.row{background:linear-gradient(90deg,rgba(6,16,34,.55),rgba(6,16,34,.35));border:1px solid rgba(255,255,255,.14);border-radius:12px;
+  backdrop-filter:blur(16px) saturate(160%);box-shadow:inset 0 1px 0 rgba(255,255,255,.18)}
+.row::before{left:8px;display:none}
+.row:hover{background:rgba(255,255,255,.12);border-color:rgba(120,235,255,.45)}
+.row.sel{background:rgba(67,230,255,.16);border-color:var(--cyan)}
+#panel{background:linear-gradient(160deg,rgba(255,255,255,.12),rgba(255,255,255,.03) 40%,rgba(80,200,255,.05));
+  backdrop-filter:blur(30px) saturate(180%);-webkit-backdrop-filter:blur(30px) saturate(180%);
+  border-left:1px solid rgba(255,255,255,.28);box-shadow:inset 1px 0 0 rgba(255,255,255,.25),-24px 0 60px rgba(0,0,0,.45)}
+#panel-actions{background:rgba(255,255,255,.05);border-bottom:1px solid rgba(255,255,255,.14)}
+.md pre{background:rgba(0,8,20,.45);border:1px solid rgba(255,255,255,.14);backdrop-filter:blur(6px)}
+.state-pill{background:rgba(255,255,255,.1);border-color:rgba(255,255,255,.3);box-shadow:inset 0 1px 0 rgba(255,255,255,.3)}
+button,input[type=date]{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.22);backdrop-filter:blur(10px);box-shadow:inset 0 1px 0 rgba(255,255,255,.25)}
+button.primary{background:linear-gradient(135deg,rgba(67,230,255,.75),rgba(45,212,191,.6));box-shadow:inset 0 1px 0 rgba(255,255,255,.55),0 0 16px rgba(67,230,255,.35)}
+
+/* ===== Космос: зорі (canvas), планета з кільцями, супутник ===== */
+#stars{position:fixed;inset:0;width:100vw;height:100vh;z-index:-3;pointer-events:none}
+.planet{position:fixed;z-index:-2;pointer-events:none;width:46vmin;height:46vmin;right:-12vmin;bottom:-14vmin;border-radius:50%;
+  background:
+    radial-gradient(circle at 32% 30%,rgba(255,255,255,.35),transparent 22%),
+    repeating-linear-gradient(-18deg,rgba(255,255,255,.05) 0 6px,transparent 6px 15px),
+    radial-gradient(circle at 35% 35%,#3fd0e6 0%,#1d6fb8 38%,#123a7a 62%,#060f2b 85%);
+  box-shadow:inset -5vmin -4vmin 7vmin rgba(0,0,0,.75),0 0 6vmin rgba(67,200,255,.35),0 0 16vmin rgba(67,160,255,.18)}
+.planet::after{content:"";position:absolute;left:-30%;right:-30%;top:41%;height:18%;border-radius:50%;
+  border:2px solid rgba(160,230,255,.35);border-top-color:rgba(160,230,255,.08);border-bottom-width:5px;
+  transform:rotate(-16deg);box-shadow:0 0 18px rgba(120,220,255,.25)}
+.moon{position:fixed;z-index:-2;pointer-events:none;width:7vmin;height:7vmin;left:6vw;top:16vh;border-radius:50%;
+  background:radial-gradient(circle at 35% 35%,#e9e4ff,#9a8fd6 45%,#3b3470 80%);
+  box-shadow:inset -1.2vmin -1vmin 1.6vmin rgba(0,0,0,.6),0 0 3vmin rgba(122,162,255,.35)}
+
+/* ===== Тема «Глибокий космос» (html.theme-deep): більше чорного, без великих бликів ===== */
+html.theme-deep{background:radial-gradient(ellipse 80% 60% at 70% 20%,#0c1830 0%,transparent 70%),radial-gradient(ellipse 70% 60% at 15% 85%,#081a26 0%,transparent 70%),linear-gradient(180deg,#060c1a,#03060e)}
+html.theme-deep .aurora i{opacity:.24;filter:blur(90px)}
+html.theme-deep .aurora i:nth-child(1){width:30vw;height:30vw;left:-6vw;top:30vh}
+html.theme-deep .aurora i:nth-child(2){width:26vw;height:26vw;right:-4vw;top:-6vh}
+html.theme-deep .aurora i:nth-child(3){width:28vw;height:28vw;left:40vw;bottom:-10vh;opacity:.12}
+html.theme-deep .aurora i:nth-child(4){display:none}
+html.theme-deep .aurora i:nth-child(5){width:18vw;height:18vw;left:62vw;top:38vh;opacity:.1}
+html.theme-deep .planet{width:24vmin;height:24vmin;right:4vw;bottom:-6vmin;
+  box-shadow:inset -3vmin -2.4vmin 4vmin rgba(0,0,0,.85),0 0 2.2vmin rgba(67,200,255,.25)}
+html.theme-deep .planet::after{border-color:rgba(160,230,255,.22);box-shadow:none}
+html.theme-deep .moon{width:4vmin;height:4vmin;box-shadow:inset -.8vmin -.6vmin 1vmin rgba(0,0,0,.7),0 0 1vmin rgba(122,162,255,.25)}
+html.theme-deep{--glass-fill:linear-gradient(155deg,rgba(90,150,210,.38) 0%,rgba(50,95,165,.3) 45%,rgba(35,125,145,.33) 100%)}
+html.theme-deep .card{border-color:rgba(130,225,255,.45);box-shadow:inset 0 1px 0 rgba(255,255,255,.45),inset 0 0 26px rgba(120,200,255,.12),0 10px 30px rgba(0,0,0,.45)}
+html.theme-deep .card.waiting{box-shadow:inset 0 1px 0 rgba(255,255,255,.45),inset 0 0 30px rgba(195,139,255,.16),0 0 24px rgba(195,139,255,.3)}
+html.theme-deep .card.working{box-shadow:inset 0 1px 0 rgba(255,255,255,.45),inset 0 0 30px rgba(120,230,255,.2),0 0 22px rgba(67,230,255,.28)}
+html.theme-deep .card.waiting_bg,html.theme-deep .card.idle_live{box-shadow:inset 0 1px 0 rgba(255,255,255,.45),inset 0 0 30px rgba(122,162,255,.2),0 0 22px rgba(122,162,255,.28)}
+html.theme-deep .ask{background:rgba(4,14,30,.35)}
+html.theme-deep .card::before{background:linear-gradient(115deg,rgba(255,255,255,.18) 0%,rgba(255,255,255,.04) 30%,transparent 45%)}
+html.theme-deep .card::after{background:linear-gradient(90deg,transparent,rgba(200,245,255,.8),transparent)}
+html.theme-deep #panel{background:linear-gradient(160deg,rgba(40,80,120,.62),rgba(10,24,42,.82))}
+html.theme-deep header{background:linear-gradient(180deg,rgba(10,24,40,.75),rgba(4,10,20,.55))}
+#theme{font-size:12px;padding:4px 10px}
+
+/* ===== Повзунок яскравості бликів (--glow: 0…1.5) ===== */
+.aurora{opacity:min(1,var(--glow,1));filter:brightness(max(1,var(--glow,1)))}
+
+/* ===== Повзунки скла: --lift (світліше), --shade (темніше), --frost (матовість), --sat (підсилення кольору фону) ===== */
+/* Зафіксовано: блики 100%, яскравість плиток 60%, прозорість 100% */
+:root{--glow:1;--lift:0;--shade:.36;--frost:0;--sat:1;--blur:2px;--glass-alpha:.25;--fill:1;--fc1:150,200,240;--fa1:.24;--fc2:60,150,190;--fa2:.14}
+html.theme-deep{--fc1:90,150,210;--fa1:.38;--fc2:35,125,145;--fa2:.33}
+.card,html.theme-deep .card{background:
+  linear-gradient(rgba(255,255,255,var(--lift)),rgba(255,255,255,var(--lift))),
+  linear-gradient(rgba(3,10,22,calc(var(--shade) + var(--frost))),rgba(3,10,22,calc(var(--shade) + var(--frost)))),
+  linear-gradient(155deg,rgba(var(--fc1),calc(var(--fa1) * var(--glass-alpha,1))),rgba(var(--fc2),calc(var(--fa2) * var(--glass-alpha,1))));
+  backdrop-filter:blur(var(--blur)) saturate(var(--sat));-webkit-backdrop-filter:blur(var(--blur)) saturate(var(--sat))}
+/* Заливка скла слабшає разом із прозорістю: при 100% майже чисте скло */
+.card::before{opacity:var(--fill)}
+.row{background:
+  linear-gradient(rgba(255,255,255,var(--lift)),rgba(255,255,255,var(--lift))),
+  linear-gradient(rgba(3,10,22,calc(var(--shade) + var(--frost))),rgba(3,10,22,calc(var(--shade) + var(--frost)))),
+  linear-gradient(90deg,rgba(6,16,34,.55),rgba(6,16,34,.35));backdrop-filter:blur(var(--blur)) saturate(var(--sat))}
+#panel{box-shadow:inset 0 0 0 100vmax rgba(3,10,22,calc(var(--shade) + var(--frost))),inset 1px 0 0 rgba(255,255,255,.25),-24px 0 60px rgba(0,0,0,.45)}
+
+/* ===== Картки в стилі рядків «Сплять» і панелі: рівне скло, одна тонка рамка, без відблисків і внутрішніх контурів ===== */
+html .card,html.theme-deep .card{
+  background:
+    linear-gradient(rgba(255,255,255,var(--lift)),rgba(255,255,255,var(--lift))),
+    linear-gradient(rgba(3,10,22,calc(var(--shade) + var(--frost) * .6)),rgba(3,10,22,calc(var(--shade) + var(--frost) * .6))),
+    linear-gradient(160deg,rgba(22,44,72,.62),rgba(10,24,44,.48));
+  border:1px solid rgba(255,255,255,.16);border-radius:12px;
+  backdrop-filter:blur(var(--blur)) saturate(1.1);-webkit-backdrop-filter:blur(var(--blur)) saturate(1.1);
+  box-shadow:0 8px 24px rgba(0,0,0,.35)}
+html .card::before,html .card::after{display:none}
+html .card:hover{border-color:rgba(120,235,255,.45);box-shadow:0 10px 28px rgba(0,0,0,.4)}
+html .card.waiting{border-color:rgba(195,139,255,.55);box-shadow:0 8px 24px rgba(0,0,0,.35),0 0 14px rgba(195,139,255,.14)}
+html .card.working{border-color:rgba(110,230,255,.5);box-shadow:0 8px 24px rgba(0,0,0,.35),0 0 14px rgba(67,230,255,.12)}
+html .card.waiting_bg,html .card.idle_live{border-color:rgba(122,162,255,.5);box-shadow:0 8px 24px rgba(0,0,0,.35),0 0 14px rgba(122,162,255,.12)}
+html .card.sel{outline:2px solid var(--cyan);outline-offset:2px}
+html .ask,html.theme-deep .ask{background:rgba(255,255,255,.045);border:none;border-left:2px solid rgba(120,235,255,.45);border-radius:6px;backdrop-filter:none}
+html .card.waiting .ask{border-left-color:rgba(195,139,255,.7)}
+html .card.waiting_bg .ask{border-left-color:rgba(122,162,255,.7)}
+html .badge{border:none;background:rgba(45,212,191,.1);color:var(--teal)}
+html .compact .card{border-radius:999px}
+
+/* Заголовки без сяйва */
+header h1,.name,#panel-body .top b{text-shadow:none !important}
+
+/* ===== Панель: темна й рівна в обох темах (як у «Глибокому космосі») ===== */
+html #panel,html.theme-deep #panel{background:linear-gradient(160deg,rgba(30,56,88,.92),rgba(12,26,46,.95));
+  backdrop-filter:blur(24px) saturate(1.05);-webkit-backdrop-filter:blur(24px) saturate(1.05);
+  border-left:1px solid rgba(255,255,255,.16);box-shadow:-24px 0 60px rgba(0,0,0,.5)}
+html #panel-actions{background:rgba(255,255,255,.03);border-bottom:1px solid rgba(255,255,255,.1)}
+
+/* ===== Ще планети: фіолетовий газовий гігант і крижана планета ===== */
+.planet2,.planet3{position:fixed;z-index:-2;pointer-events:none;border-radius:50%}
+.planet2{width:11vmin;height:11vmin;right:17vw;top:13vh;
+  background:
+    radial-gradient(circle at 30% 28%,rgba(255,255,255,.35),transparent 25%),
+    repeating-linear-gradient(8deg,rgba(255,255,255,.07) 0 3px,transparent 3px 9px,rgba(40,10,80,.18) 9px 12px,transparent 12px 18px),
+    radial-gradient(circle at 38% 38%,#d8a6ff 0%,#9b5cf0 40%,#4a1f9a 70%,#16072e 92%);
+  box-shadow:inset -2.2vmin -1.6vmin 2.6vmin rgba(0,0,0,.75),0 0 3vmin rgba(170,110,255,.28)}
+.planet3{width:5.5vmin;height:5.5vmin;left:3vw;bottom:28vh;
+  background:radial-gradient(circle at 34% 32%,#eafcff 0%,#7fe3f0 35%,#2a8ea8 68%,#0b2c3a 92%);
+  box-shadow:inset -1vmin -.8vmin 1.4vmin rgba(0,0,0,.7),0 0 1.8vmin rgba(120,230,255,.3)}
+html.theme-deep .planet2{width:8vmin;height:8vmin;box-shadow:inset -1.8vmin -1.3vmin 2vmin rgba(0,0,0,.85),0 0 1.2vmin rgba(170,110,255,.18)}
+html.theme-deep .planet3{width:4vmin;height:4vmin;box-shadow:inset -.8vmin -.6vmin 1vmin rgba(0,0,0,.8),0 0 .8vmin rgba(120,230,255,.18)}
+
+/* ===== Марс (planet = "mars" у конфігу дошки) ===== */
+html.planet-mars .planet{
+  background:
+    radial-gradient(ellipse 22% 9% at 46% 9%,rgba(255,255,255,.9),rgba(255,240,235,.5) 60%,transparent 75%),
+    radial-gradient(circle at 62% 58%,rgba(70,20,8,.55) 0 3%,transparent 3.6%),
+    radial-gradient(circle at 34% 66%,rgba(70,20,8,.45) 0 2%,transparent 2.6%),
+    radial-gradient(circle at 55% 36%,rgba(70,20,8,.4) 0 1.6%,transparent 2.2%),
+    radial-gradient(ellipse 38% 12% at 50% 48%,rgba(90,28,10,.45),transparent 70%),
+    radial-gradient(ellipse 30% 9% at 40% 70%,rgba(90,28,10,.35),transparent 70%),
+    radial-gradient(circle at 34% 32%,#f0a070 0%,#d2622e 32%,#9c3412 60%,#4a1406 82%,#1a0602 96%);
+  box-shadow:inset -5vmin -4vmin 7vmin rgba(0,0,0,.75),0 0 4vmin rgba(255,110,60,.28),0 0 12vmin rgba(255,90,40,.12)}
+html.planet-mars .planet::after{display:none}
+html.planet-mars.theme-deep .planet{box-shadow:inset -3vmin -2.4vmin 4vmin rgba(0,0,0,.85),0 0 2vmin rgba(255,110,60,.22)}
+
+/* Значок дошки в заголовку */
+header h1{display:flex;align-items:center;gap:10px}
+#board-icon{width:28px;height:28px;display:block}
+
+
+/* Пошук і панель проєктів */
+#filters{display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:12px 20px}
+#filters #chips{padding:0}
+#q{font:inherit;font-size:13px;width:260px;max-width:100%;padding:6px 12px;border-radius:999px;border:1px solid var(--line-hi);
+  background:rgba(8,20,40,.55);color:var(--ink);outline:none}
+#q:focus{border-color:var(--cyan);box-shadow:0 0 12px rgba(67,230,255,.25)}
+#projects-btn{font-size:12px;padding:4px 10px}
+.pj-form{display:grid;grid-template-columns:1fr 1.6fr auto;gap:8px;align-items:center;margin:8px 0 4px}
+.pj-form input{font:inherit;font-size:13px;padding:6px 10px;border-radius:8px;border:1px solid var(--line-hi);background:rgba(8,20,40,.55);color:var(--ink)}
+.pj-list{display:flex;flex-direction:column;gap:6px;margin-top:6px}
+.pj-row{display:grid;grid-template-columns:1fr 1.6fr auto auto;gap:10px;align-items:center;padding:7px 10px;border-radius:10px;
+  background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1)}
+.pj-row .pj-path{color:var(--muted);font-family:"JetBrains Mono",monospace;font-size:12px;overflow-wrap:anywhere}
+.pj-row .pj-count{color:var(--teal);font-size:12px;white-space:nowrap}
+.pj-row button{font-size:12px;padding:3px 9px}
+.pj-hint{color:var(--muted);font-size:12px;margin-top:4px}
+@media (max-width:700px){.pj-form,.pj-row{grid-template-columns:1fr}}
+</style>
+<script>try { if (localStorage.getItem("agent-board-theme") === "deep") document.documentElement.classList.add("theme-deep"); } catch (e) {}</script>
+</head>
+<body>
+<canvas id="stars" aria-hidden="true"></canvas><div class="planet" aria-hidden="true"></div><div class="moon" aria-hidden="true"></div><div class="planet2" aria-hidden="true"></div><div class="planet3" aria-hidden="true"></div>
+<div class="aurora" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></div>
+<header><h1><img id="board-icon" src="/icon" alt="" onerror="this.replaceWith(document.createTextNode('👥'))"><span id="board">Команда</span></h1><span id="stats"></span><button id="projects-btn" style="margin-left:auto" title="Ваші проєкти: назва й тека">🗂 Проєкти</button><button id="theme" title="Перемкнути тему"></button><label><input type="checkbox" id="archive"> показати архів</label></header>
+<div id="filters"><input id="q" type="search" placeholder="Пошук карток…  ( / )" autocomplete="off"><div id="chips"></div></div>
+<main><div id="room"></div></main><aside id="panel"><div id="panel-actions"></div><div id="panel-body"></div></aside>
+<div id="toast"></div>
+<script>
+const S = {cards: [], family: "Усі", q: "", view: location.hash === "#projects" ? "projects" : null, projects: null, pjEdit: null,
+  sel: location.hash === "#projects" ? null : decodeURIComponent(location.hash.slice(1)) || null, haiku: {}, html: {}, board: "Команда"};
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"}[c]));
+// Короткі уривки на картках — без Markdown-розмітки
+const cut = (s, n) => { s = String(s || "").replace(/^#{1,6}\s+/gm, "").replace(/\*\*|`+|^\s*[-*]\s+/gm, "").replace(/\s+/g, " ").trim(); return s.length > n ? s.slice(0, n - 1) + "…" : s; };
+function age(ts) {
+  const m = Math.max(0, (Date.now() / 1000 - ts) / 60);
+  if (m < 60) return Math.round(m) + " хв";
+  if (m < 1440) return Math.round(m / 60) + " год";
+  return Math.round(m / 1440) + " дн";
+}
+const STATE = {waiting: "🔴 чекає на вас", waiting_bg: "⏳ чекає на фонові задачі", working: "⚙️ працює",
+  idle_live: "❓ жива, без відповіді", sleeping: "💤 спить", done: "✓ готово", snoozed: "⏸ відкладено"};
+const ZONES = [
+  {title: "🔴 Чекають на вас", states: ["waiting"]},
+  {title: "⚙️ Працюють", states: ["working", "waiting_bg", "idle_live"]},
+  {title: "💤 Сплять", states: ["sleeping"], list: true},
+  {title: "🗄 Архів і відкладені", states: ["done", "snoozed"], compact: true, archive: true},
+];
+const headline = c => c.summary?.about || c.title;
+// Маленький безпечний Markdown: спершу екрануємо HTML, потім розмічаємо.
+function mdInline(t) {
+  return t.replace(/`([^`]+)`/g, "<code>$1</code>")
+    .replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>")
+    .replace(/(^|[^*\w])\*([^*\n]+)\*(?!\w)/g, "$1<em>$2</em>")
+    .replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>');
+}
+function md(text) {
+  const lines = esc(text || "").split("\n"), out = [];
+  let i = 0;
+  while (i < lines.length) {
+    const line = lines[i];
+    if (/^```/.test(line)) {
+      const code = []; i++;
+      while (i < lines.length && !/^```/.test(lines[i])) code.push(lines[i++]);
+      out.push(`<pre><code>${code.join("\n")}</code></pre>`); i++; continue;
+    }
+    let m;
+    if ((m = line.match(/^(#{1,6})\s+(.*)/))) { out.push(`<h${Math.min(m[1].length + 2, 5)}>${mdInline(m[2])}</h${Math.min(m[1].length + 2, 5)}>`); i++; continue; }
+    if (/^\s*(---|\*\*\*)\s*$/.test(line)) { out.push("<hr>"); i++; continue; }
+    if (/^\s*\|.*\|\s*$/.test(line)) {
+      const rows = [];
+      while (i < lines.length && /^\s*\|.*\|\s*$/.test(lines[i])) rows.push(lines[i++]);
+      const cells = r => r.trim().replace(/^\||\|$/g, "").split("|").map(c => mdInline(c.trim()));
+      const body = rows.filter(r => !/^\s*\|[\s:|-]+\|\s*$/.test(r));
+      out.push("<table>" + body.map((r, k) => "<tr>" + cells(r).map(c => k === 0 ? `<th>${c}</th>` : `<td>${c}</td>`).join("") + "</tr>").join("") + "</table>");
+      continue;
+    }
+    if (/^&gt;\s?/.test(line)) {
+      const q = [];
+      while (i < lines.length && /^&gt;\s?/.test(lines[i])) q.push(lines[i++].replace(/^&gt;\s?/, ""));
+      out.push(`<blockquote>${mdInline(q.join("<br>"))}</blockquote>`); continue;
+    }
+    if (/^\s*([-*+]|\d+[.)])\s+/.test(line)) {
+      const ordered = /^\s*\d/.test(line), items = [];
+      while (i < lines.length && /^\s*([-*+]|\d+[.)])\s+/.test(lines[i])) items.push(lines[i++].replace(/^\s*([-*+]|\d+[.)])\s+/, ""));
+      const tag = ordered ? "ol" : "ul";
+      out.push(`<${tag}>${items.map(x => `<li>${mdInline(x)}</li>`).join("")}</${tag}>`); continue;
+    }
+    if (!line.trim()) { i++; continue; }
+    const para = [];
+    while (i < lines.length && lines[i].trim() && !/^(```|#{1,6}\s|&gt;|\s*([-*+]|\d+[.)])\s|\s*\|)/.test(lines[i])) para.push(lines[i++]);
+    if (!para.length) para.push(lines[i++]);
+    out.push(`<p>${mdInline(para.join("<br>"))}</p>`);
+  }
+  return out.join("");
+}
+function setHtml(id, html) {
+  if (S.html[id] === html) return;  // не чіпаємо DOM без змін, щоб не губити кліки й виділення
+  S.html[id] = html;
+  document.getElementById(id).innerHTML = html;
+}
+function ask(c) {
+  if (c.state === "working") return "⏳ працює…";
+  if (c.state === "waiting" && c.live_status === "waiting") return "❓ потрібна ваша відповідь" + (c.live_waiting_for ? ` (${c.live_waiting_for})` : "");
+  if (c.state === "waiting_bg") return c.background ? `⏳ чекає на фонові задачі (${c.background})` : "⏳ чекає на фонову команду";
+  if (c.state === "idle_live") {
+    if (c.live_status && c.live_status !== "idle") return "❓ статус: " + c.live_status;  // невідомий статус — як є
+    return c.version ? "❓ остання репліка ваша, агент не відповів" : "ще без реплік";
+  }
+  if (c.summary?.waiting_for) return "❓ " + c.summary.waiting_for;
+  return c.last_agent ? "💬 " + cut(c.last_agent, 140) : "";
+}
+function note(c) {
+  if (c.summary_mode === "excluded") return `<div class="raw">🔒 робоче — без підсумку</div>`;
+  if (c.summary_mode === "disabled") return "";
+  if (!c.summary) return `<div class="raw">⏳ підсумок не готовий</div>`;
+  return c.summary_fresh ? "" : `<div class="raw">↻ підсумок оновлюється</div>`;
+}
+function cardHtml(c) {
+  const rel = (c.related || []).map(p => `<span class="badge">також: ${esc(p)}</span>`).join("");
+  const warn = c.likely_project ? `<div class="warn">⚠️ схоже, це про ${esc(c.likely_project)}</div>` : "";
+  const old = c.old_tab_live ? `<div class="raw">🗂 стара вкладка цієї розмови ще відкрита</div>` : "";
+  const a = ask(c);
+  return `<div class="card ${c.state} ${S.sel === c.id ? "sel" : ""}" data-id="${esc(c.id)}">
+    <div class="top"><span class="name">${esc(c.icon)} ${esc(c.name || c.project)}</span><span class="age">${age(c.last_activity)}</span></div>
+    <div class="proj">${esc(c.family)} · ${esc(c.project)}${c.worktree ? " / " + esc(c.worktree) : ""}${rel}</div>
+    <div class="title">${esc(cut(headline(c), 120))}</div>
+    ${a ? `<div class="ask">${esc(a)}</div>` : ""}${warn}${old}${note(c)}</div>`;
+}
+function dayLabel(ts) {
+  const d = new Date(ts * 1000), today = new Date();
+  const start = x => new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime();
+  const diff = Math.round((start(today) - start(d)) / 86400000);
+  if (diff === 0) return "Сьогодні";
+  if (diff === 1) return "Вчора";
+  return d.toLocaleDateString("uk", {weekday: "long", day: "numeric", month: "long"});
+}
+function rowHtml(c) {
+  const time = new Date(c.last_activity * 1000).toLocaleTimeString("uk", {hour: "2-digit", minute: "2-digit"});
+  const tag = c.summary_mode === "excluded" ? "🔒" : c.related?.length ? "також: " + c.related.join(", ") : "";
+  return `<div class="row card ${c.state} ${S.sel === c.id ? "sel" : ""}" data-id="${esc(c.id)}">
+    <span class="time">${time}</span>
+    <span class="rp">${esc(c.icon)} ${esc(c.project)}${c.worktree ? " / " + esc(c.worktree) : ""}</span>
+    <span class="rt">${esc(cut(headline(c), 140))}</span>
+    <span class="rn">${esc(tag)}</span></div>`;
+}
+function listHtml(list) {
+  let out = "", day = null;
+  for (const c of list) {  // картки вже відсортовані від найсвіжішої
+    const label = dayLabel(c.last_activity);
+    if (label !== day) { out += `${day === null ? "" : "</div>"}<div class="day">${esc(label)}</div><div class="list">`; day = label; }
+    out += rowHtml(c);
+  }
+  return out + (day === null ? "" : "</div>");
+}
+function chipHtml(c) {
+  const until = c.state === "snoozed" && c.mark?.until ? ` · до ${new Date(c.mark.until * 1000).toLocaleDateString("uk")}` : "";
+  return `<div class="card ${c.state} ${S.sel === c.id ? "sel" : ""}" data-id="${esc(c.id)}">${esc(c.icon)} ${esc(c.project)} · ${esc(cut(headline(c), 50))} · ${age(c.last_activity)}${until}</div>`;
+}
+function haikuText() {
+  const h = S.haiku || {};
+  if (!h.enabled) return " · Haiku вимкнено";
+  if (h.paused_until) return ` · Haiku на паузі до ${new Date(h.paused_until * 1000).toLocaleTimeString("uk")}`;
+  return h.pending ? ` · Haiku: ${h.pending} у черзі` : "";
+}
+function render() {
+  const showArchive = document.getElementById("archive").checked;
+  const terms = S.q.toLowerCase().split(/\s+/).filter(Boolean);
+  const hay = c => [c.title, c.summary?.about, c.summary?.waiting_for, c.project, c.worktree, c.family, c.name,
+                    c.first_user, c.last_user, c.last_agent, c.cwd].join(" ").toLowerCase();
+  const cards = S.cards.filter(c => (S.family === "Усі" || c.family === S.family) && terms.every(t => hay(c).includes(t)));
+  const live = S.cards.filter(c => c.live_status).length;
+  const waiting = S.cards.filter(c => c.state === "waiting").length;
+  document.getElementById("stats").textContent = `${live} живих · ${waiting} чекають на вас` + haikuText();
+  document.title = (waiting ? `(${waiting}) ` : "") + S.board;
+  document.getElementById("board").textContent = S.board;
+  const counts = {}, icons = {};
+  S.cards.forEach(c => { icons[c.family] = c.icon; if (!["done", "snoozed"].includes(c.state)) counts[c.family] = (counts[c.family] || 0) + 1; });
+  const fams = ["Усі", ...Object.keys(counts).sort((a, b) => counts[b] - counts[a])];
+  setHtml("chips", fams.map(f =>
+    `<button class="chip ${S.family === f ? "on" : ""}" data-f="${esc(f)}">${f === "Усі" ? "Усі" : esc(icons[f]) + " " + esc(f) + " " + counts[f]}</button>`).join(""));
+  setHtml("room", ZONES.filter(z => !z.archive || showArchive).map(z => {
+    const list = cards.filter(c => z.states.includes(c.state));
+    if (!list.length) return "";
+    if (z.list) return `<h2>${z.title} · ${list.length}</h2><div>${listHtml(list)}</div>`;
+    return `<h2>${z.title} · ${list.length}</h2><div class="${z.compact ? "compact" : "grid"}">${list.map(z.compact ? chipHtml : cardHtml).join("")}</div>`;
+  }).join("") || `<p class="raw">Тут поки порожньо.</p>`);
+  renderPanel();
+}
+function projectsHtml() {
+  const P = S.projects;
+  if (!P) return `<p class="raw">Завантажую…</p>`;
+  const e = S.pjEdit || {name: "", path: "", old: ""};
+  const row = (p, user) => `<div class="pj-row"><b>${esc(p.name)}</b><span class="pj-path">${esc(p.path)}</span>
+      <span class="pj-count">${p.count} розм.</span>
+      <span>${user ? `<button data-act="pj-edit" data-path="${esc(p.path)}" data-name="${esc(p.name)}">✎</button> <button data-act="pj-del" data-path="${esc(p.path)}" title="Видалити">✕</button>`
+                    : `<button data-act="pj-adopt" data-path="${esc(p.path)}" data-name="${esc(p.name)}" title="Перейменувати / змінити теку">✎</button>`}</span></div>`;
+  return `<div class="top"><b>🗂 Проєкти</b><button data-act="close">✕</button></div>
+    <h2>${e.old ? "Редагувати проєкт" : "Новий проєкт"}</h2>
+    <div class="pj-form"><input id="pj-name" placeholder="Назва" value="${esc(e.name)}"><input id="pj-path" placeholder="Тека: ~/server/... або /home/..." value="${esc(e.path)}">
+      <span><button class="primary" data-act="pj-save">Зберегти</button>${e.old || e.path ? ` <button data-act="pj-cancel">Скасувати</button>` : ""}</span></div>
+    <div class="pj-hint">Розмови, що почалися в цій теці (і вкладених), отримають цей проєкт — пріоритетніше за git.</div>
+    <h2>Ваші проєкти · ${P.user.length}</h2>
+    <div class="pj-list">${P.user.map(p => row(p, true)).join("") || `<p class="raw">Ще немає — додайте вище або візьміть зі знайдених.</p>`}</div>
+    <h2>Знайдені автоматично · ${P.detected.length}</h2>
+    <div class="pj-list">${P.detected.map(p => row(p, false)).join("")}</div>`;
+}
+async function loadProjects() { S.projects = await (await fetch("/api/projects")).json(); render(); }
+function renderPanel() {
+  const el = document.getElementById("panel"), c = S.cards.find(x => x.id === S.sel);
+  const open = !!c || S.view === "projects";
+  el.classList.toggle("open", open);
+  document.body.classList.toggle("panel-open", open);
+  if (!c && S.view === "projects") { setHtml("panel-actions", ""); return setHtml("panel-body", projectsHtml()); }
+  if (!c) { setHtml("panel-body", ""); return setHtml("panel-actions", ""); }
+  const s = c.summary || {};
+  const done = (s.done || []).map(x => `<li>${esc(x)}</li>`).join("");
+  const archived = ["done", "snoozed"].includes(c.state);
+  setHtml("panel-body", `<div class="top"><b>${esc(c.icon)} ${esc(c.name || c.project)}</b><button data-act="close">✕</button></div>
+    <div class="state-pill">${esc(STATE[c.state] || c.state)}${c.state === "snoozed" && c.mark?.until ? " до " + new Date(c.mark.until * 1000).toLocaleDateString("uk") : ""}</div>
+    <div class="proj">${esc(c.family)} / ${esc(c.project)}${c.worktree ? " · worktree " + esc(c.worktree) : ""}${c.branch ? " · " + esc(c.branch) : ""} · ${c.live_status ? "жива, " + esc(c.live_status) : "закрита"} · ${age(c.last_activity)} тому</div>
+    <div class="proj">${esc(c.cwd)}</div>
+    ${c.likely_project ? `<div class="warn">⚠️ схоже, це про ${esc(c.likely_project)}</div>` : ""}
+    <h2>Про що</h2><div class="md">${md(s.about || c.title)}</div>
+    ${done ? `<h2>Що зроблено</h2><ul class="md">${done}</ul>` : ""}
+    ${s.waiting_for ? `<h2>Чекає від вас</h2><div class="ask">${esc(s.waiting_for)}</div>` : ""}
+    ${c.related?.length ? `<h2>Суміжні проєкти</h2><div>${c.related.map(esc).join(", ")}</div>` : ""}
+    ${c.last_user && c.last_user !== c.first_user ? `<h2>Ваша остання репліка</h2><div class="md">${md(c.last_user)}</div>` : ""}
+    <h2>Остання репліка агента</h2><div class="md">${md(c.last_agent) || "<p class=raw>—</p>"}</div>
+    <h2>Перше повідомлення</h2><div class="md">${md(c.first_user)}</div>
+    ${c.old_tab_live ? `<div class="raw">🗂 Стара вкладка цієї розмови ще відкрита: розмову продовжено у фоні.</div>` : ""}
+    ${c.summary_error ? `<div class="raw">Помилка підсумку: ${esc(cut(c.summary_error, 200))}</div>` : ""}`);
+  // Кнопки й поле дати — окремо: вони не залежать від віку картки, тож не перемальовуються щохвилини.
+  const live = !!c.live_status;
+  setHtml("panel-actions", `<button class="primary" data-act="jump" data-for="${esc(c.id)}" title="${live ? "Перейти до вікна, де розмова вже відкрита" : "Відкрити в Terminator на весь екран"}">↗ Перейти</button>
+    <button data-act="copy" title="${esc(c.resume)}">📋 Копіювати</button>
+    ${archived ? `<button data-act="clear">↩ Повернути</button>`
+      : `<button data-act="done">✓ Готово</button><button data-act="snooze1">⏸ На день</button><button data-act="snooze7">⏸ На тиждень</button>
+         <input type="date" id="until"><button data-act="until">⏸ До дати</button>`}`);
+}
+function toast(text) {
+  const el = document.getElementById("toast");
+  el.textContent = text; el.style.display = "block";
+  clearTimeout(toast.t); toast.t = setTimeout(() => el.style.display = "none", 4000);
+}
+async function post(url, body) {
+  const r = await fetch(url, {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify(body)});
+  return r.json();
+}
+async function projectAct(a, btn) {
+  if (a === "close") { S.view = null; S.pjEdit = null; return render(); }
+  if (a === "pj-edit" || a === "pj-adopt") {
+    S.pjEdit = {name: btn.dataset.name, path: btn.dataset.path, old: a === "pj-edit" ? btn.dataset.path : ""};
+    return render();
+  }
+  if (a === "pj-cancel") { S.pjEdit = null; return render(); }
+  if (a === "pj-del") {
+    S.projects = await post("/api/projects", {action: "delete", path: btn.dataset.path});
+    toast("Проєкт видалено"); return render();
+  }
+  if (a === "pj-save") {
+    const name = document.getElementById("pj-name").value.trim(), path = document.getElementById("pj-path").value.trim();
+    const r = await fetch("/api/projects", {method: "POST", headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({action: "save", name, path, old_path: S.pjEdit?.old || undefined})});
+    const data = await r.json();
+    if (!r.ok) return toast(data.error || "Не вдалося зберегти");
+    S.projects = data; S.pjEdit = null; toast("Збережено: розмови з цієї теки — у проєкті «" + name + "»"); return render();
+  }
+}
+async function act(a, btn) {
+  if (S.view === "projects" && !S.sel) return projectAct(a, btn);
+  const id = S.sel;
+  if (!id) return;
+  if (a === "close") { S.sel = null; history.replaceState(null, "", location.pathname); return render(); }
+  if (a === "jump") {
+    const r = await post("/api/jump", {id});
+    if (r.ok) return toast(r.method === "focus" ? "Перейшов до вікна з розмовою" : "Відкрив у Terminator");
+    let copied = true;
+    try { await navigator.clipboard.writeText(r.command); } catch (e) { copied = false; }
+    toast(r.error === "live" ? "Розмова вже відкрита в іншому терміналі" + (copied ? " · команда в буфері" : "")
+                             : "Не вдалося відкрити Terminator: " + (r.error || "") + (copied ? " · команда в буфері" : ""));
+    return;
+  }
+  if (a === "copy") {
+    const c = S.cards.find(x => x.id === id);
+    try { await navigator.clipboard.writeText(c.resume); toast("Скопійовано: " + c.resume); }
+    catch (e) { toast("Не вдалося скопіювати: " + c.resume); }
+    return;
+  }
+  if (a === "until") {
+    const v = document.getElementById("until").value;
+    if (!v) return toast("Оберіть дату");
+    const until = new Date(v + "T23:59:59").getTime() / 1000;
+    return post("/api/mark", {id, kind: "snooze", until});
+  }
+  const map = {done: {kind: "done"}, snooze1: {kind: "snooze", days: 1}, snooze7: {kind: "snooze", days: 7}, clear: {kind: "clear"}};
+  await post("/api/mark", {id, ...map[a]});
+}
+document.addEventListener("click", e => {
+  const chip = e.target.closest(".chip");
+  if (chip) { S.family = chip.dataset.f; return render(); }
+  const button = e.target.closest("[data-act]");
+  if (button) return act(button.dataset.act, button);
+  if (e.target.closest("input")) return;
+  const card = e.target.closest(".card");
+  if (card) { S.view = null; S.sel = card.dataset.id; history.replaceState(null, "", "#" + encodeURIComponent(S.sel)); render(); }
+});
+document.getElementById("archive").addEventListener("change", render);
+document.getElementById("q").addEventListener("input", e => { S.q = e.target.value; render(); });
+document.getElementById("projects-btn").addEventListener("click", () => {
+  S.sel = null; S.view = S.view === "projects" ? null : "projects"; S.pjEdit = null;
+  history.replaceState(null, "", location.pathname); render(); if (S.view) loadProjects();
+});
+document.addEventListener("keydown", e => {
+  const q = document.getElementById("q");
+  if (e.key === "/" && document.activeElement.tagName !== "INPUT") { e.preventDefault(); q.focus(); }
+  else if (e.key === "Escape" && document.activeElement === q) { q.value = ""; S.q = ""; q.blur(); render(); }
+});
+
+function apply(d) { S.cards = d.cards; S.haiku = d.haiku; S.board = d.board || S.board; document.documentElement.classList.toggle("planet-mars", d.planet === "mars"); render(); }
+fetch("/api/board").then(r => r.json()).then(apply);
+if (S.view === "projects") loadProjects();
+function connect() {
+  const es = new EventSource("/api/events");
+  es.addEventListener("board", e => apply(JSON.parse(e.data)));
+  // Після 503 (усі слоти зайняті) чи падіння сервера браузер сам не перепідключається.
+  es.onerror = () => { if (es.readyState === EventSource.CLOSED) setTimeout(connect, 5000); };
+}
+connect();
+setInterval(render, 60000);
+
+// Зоряне небо: три шари глибини з паралаксом, мерехтіння, рідкісні падучі зірки.
+(function starfield() {
+  document.addEventListener("themechange", () => starfield.reset && starfield.reset());
+  const cv = document.getElementById("stars"), ctx = cv.getContext("2d");
+  const still = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  let w, h, stars = [], rocks = [], meteor = null, last = 0;
+  // Астероїд: неправильний багатокутник, повільний дрейф і обертання
+  function makeRock(anywhere) {
+    const r = 3 + Math.random() ** 2 * 13, n = 7 + (Math.random() * 4 | 0), pts = [];
+    for (let i = 0; i < n; i++) { const a = i / n * 6.283, k = .65 + Math.random() * .45; pts.push([Math.cos(a) * r * k, Math.sin(a) * r * k]); }
+    return {x: anywhere ? Math.random() * w : w + r * 2, y: Math.random() * h, r, pts,
+            vx: -(0.004 + Math.random() * 0.012) * (0.6 + r / 16), vy: (Math.random() - .5) * 0.004,
+            rot: Math.random() * 6.283, vr: (Math.random() - .5) * 0.0012, shade: 70 + Math.random() * 40};
+  }
+  function drawRock(o) {
+    ctx.save(); ctx.translate(o.x, o.y); ctx.rotate(o.rot);
+    ctx.beginPath(); o.pts.forEach(([x, y], i) => i ? ctx.lineTo(x, y) : ctx.moveTo(x, y)); ctx.closePath();
+    const g = ctx.createLinearGradient(-o.r, -o.r, o.r, o.r);  // світло зліва-зверху
+    g.addColorStop(0, `rgb(${o.shade + 40},${o.shade + 50},${o.shade + 70})`); g.addColorStop(.55, `rgb(${o.shade * .5},${o.shade * .55},${o.shade * .7})`); g.addColorStop(1, "rgb(12,16,26)");
+    ctx.fillStyle = g; ctx.fill();
+    ctx.strokeStyle = "rgba(170,210,255,.18)"; ctx.lineWidth = .7; ctx.stroke();
+    ctx.restore();
+  }
+  const tints = ["255,255,255", "190,235,255", "210,200,255", "255,230,200"];
+  function resize() {
+    const dpr = Math.min(devicePixelRatio || 1, 2);
+    w = innerWidth; h = innerHeight; cv.width = w * dpr; cv.height = h * dpr; ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    const deep = document.documentElement.classList.contains("theme-deep");
+    const n = Math.round(w * h / (deep ? 1400 : 3200));  // «Глибокий космос» — густіші й дрібніші зорі
+    rocks = Array.from({length: Math.max(6, Math.round(w * h / 160000))}, () => makeRock(true));
+    stars = Array.from({length: n}, () => {
+      const z = Math.random();  // 0 — далеко, 1 — близько
+      const bright = Math.random() < .04;
+      const r = deep ? (bright ? 1 + z * .9 : .35 + z * .6) : .3 + z * 1.4;
+      const a = deep ? (bright ? .8 + Math.random() * .2 : .35 + Math.random() * .45) : .35 + Math.random() * .6;
+      return {x: Math.random() * w, y: Math.random() * h, z, r, a,
+              tw: Math.random() * Math.PI * 2, sp: .4 + Math.random() * 1.6, c: tints[Math.random() < .8 ? 0 : 1 + (Math.random() * 3 | 0)]};
+    });
+  }
+  function frame(t) {
+    const dt = Math.min(t - last, 64) || 16; last = t;
+    ctx.clearRect(0, 0, w, h);
+    for (const s of stars) {
+      if (!still) { s.x -= (0.004 + s.z * 0.02) * dt; if (s.x < -2) { s.x = w + 2; s.y = Math.random() * h; } s.tw += s.sp * dt / 1000; }
+      const alpha = s.a * (0.65 + 0.35 * Math.sin(s.tw));
+      ctx.beginPath(); ctx.fillStyle = `rgba(${s.c},${alpha})`; ctx.arc(s.x, s.y, s.r, 0, 6.283); ctx.fill();
+      if (s.r > 1.35) { ctx.fillStyle = `rgba(${s.c},${alpha * .12})`; ctx.beginPath(); ctx.arc(s.x, s.y, s.r * 4, 0, 6.283); ctx.fill(); }
+    }
+    for (const o of rocks) {
+      if (!still) {
+        o.x += o.vx * dt; o.y += o.vy * dt; o.rot += o.vr * dt;
+        if (o.x < -o.r * 3 || o.y < -o.r * 3 || o.y > h + o.r * 3) Object.assign(o, makeRock(false));
+      }
+      drawRock(o);
+    }
+    if (!still) {
+      if (!meteor && Math.random() < dt / 9000) meteor = {x: Math.random() * w * .8 + w * .2, y: Math.random() * h * .4, life: 0};
+      if (meteor) {
+        meteor.life += dt; const k = meteor.life / 900, len = 140;
+        const x = meteor.x - k * 520, y = meteor.y + k * 260;
+        const g = ctx.createLinearGradient(x, y, x + len, y - len / 2);
+        g.addColorStop(0, `rgba(200,245,255,${.9 * (1 - k)})`); g.addColorStop(1, "rgba(200,245,255,0)");
+        ctx.strokeStyle = g; ctx.lineWidth = 1.6; ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + len, y - len / 2); ctx.stroke();
+        if (k >= 1) meteor = null;
+      }
+      requestAnimationFrame(frame);
+    }
+  }
+  addEventListener("resize", () => { resize(); if (still) frame(0); });
+  starfield.reset = () => { resize(); if (still) frame(0); };
+  document.addEventListener("visibilitychange", () => { if (!document.hidden && !still) { last = performance.now(); } });
+  resize(); requestAnimationFrame(frame);
+})();
+
+// Перемикач тем: «Сяйво» (типова) і «Глибокий космос». Вибір пам'ятає браузер.
+(function themes() {
+  const btn = document.getElementById("theme"), root = document.documentElement;
+  const label = () => { btn.textContent = root.classList.contains("theme-deep") ? "🌑 Глибокий космос" : "🌌 Сяйво"; };
+  btn.addEventListener("click", () => {
+    const deep = root.classList.toggle("theme-deep");
+    try { localStorage.setItem("agent-board-theme", deep ? "deep" : "glare"); } catch (e) {}
+    label();
+    document.dispatchEvent(new Event("themechange"));
+  });
+  label();
+})();
+
+
+</script>
+</body>
+</html>

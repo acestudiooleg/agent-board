@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <defs>
+    <linearGradient id="leg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#e9ddff"/><stop offset=".5" stop-color="#b48cff"/><stop offset="1" stop-color="#7a5cff"/>
+    </linearGradient>
+    <linearGradient id="ribbon" x1="1" y1="0" x2="0" y2="0">
+      <stop offset="0" stop-color="#43e6ff" stop-opacity=".2"/><stop offset=".35" stop-color="#43e6ff"/>
+      <stop offset=".8" stop-color="#9f7bff"/><stop offset="1" stop-color="#c9a6ff"/>
+    </linearGradient>
+  </defs>
+  <!-- ніжки Λ -->
+  <path d="M32 7 C29 20 23 38 18 57" fill="none" stroke="url(#leg)" stroke-width="4.2" stroke-linecap="round"/>
+  <path d="M32 7 C35 20 41 40 47 59" fill="none" stroke="url(#leg)" stroke-width="4.2" stroke-linecap="round"/>
+  <!-- стрічка-поперечка: праворуч → наліво крізь ніжки → петля вниз і назад -->
+  <path d="M59 29 L26 29 C17 29 12.5 31.5 13.5 35.5 C14.5 39.5 20 42.5 26 43"
+        fill="none" stroke="url(#ribbon)" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- зірочка на вершині -->
+  <path d="M32 1.2 L33.1 5.9 L37.8 7 L33.1 8.1 L32 12.8 L30.9 8.1 L26.2 7 L30.9 5.9 Z" fill="#fff"/>
+  <circle cx="32" cy="7" r="2.4" fill="#fff" opacity=".35"/>
+</svg>

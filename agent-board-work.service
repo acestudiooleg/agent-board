@@ -1,0 +1,15 @@
+[Unit]
+Description=Agent Board — робоча дошка (окремий акаунт Claude, без Haiku)
+StartLimitIntervalSec=120
+StartLimitBurst=5
+
+[Service]
+WorkingDirectory=%h/server/agent-board
+ExecStart=/usr/bin/python3 -m agent_board %h/server/agent-board/config.work.toml
+Environment=PATH=%h/.local/bin:/usr/local/bin:/usr/bin
+Environment=DISPLAY=:0
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=default.target

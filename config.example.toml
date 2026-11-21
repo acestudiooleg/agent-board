@@ -1,0 +1,29 @@
+# Зразок конфігу особистої дошки. Скопіюйте в config.toml і підлаштуйте під себе (config.toml у git не потрапляє).
+[board]
+board_name = "Мої проєкти"
+icon = "assets/a-mark.svg"
+port = 8091
+max_age_days = 14
+summary_quiet_seconds = 30
+summary_concurrency = 2
+# Підсумки йдуть з лімітів підписки Claude: не більше стількох викликів Haiku на годину.
+summary_per_hour = 20
+# Робоче, що НЕ відправляється в Haiku: родини проєктів і теки (cwd, файли, Bash-команди).
+summary_exclude_families = ["Work"]
+summary_exclude_paths = ["~/work"]
+
+# Теки без git, які треба вважати проєктом (найдовший префікс; git-корінь має пріоритет).
+# Зручніше — через панель «🗂 Проєкти» на сторінці.
+[[project]]
+path = "~/notes"
+name = "notes"
+
+[[family]]
+name = "Особисте"
+icon = "🏠"
+projects = ["notes", "blog"]
+
+[[family]]
+name = "Work"
+icon = "💼"
+projects = ["work-api", "work-web"]

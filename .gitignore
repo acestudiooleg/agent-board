@@ -1,0 +1,7 @@
+__pycache__/
+*.pyc
+.superpowers/
+assets/local/
+config.toml
+config.work.toml
+docs/superpowers/
