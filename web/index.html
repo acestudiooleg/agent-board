@@ -97,6 +97,7 @@ h2::after{content:"";flex:1;height:1px;background:linear-gradient(90deg,var(--li
 #panel-actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center;padding:14px 24px;border-bottom:1px solid var(--line);background:rgba(3,10,22,.4)}
 #panel-actions:empty{display:none}
 #panel-body{overflow-y:auto;padding:18px 28px 40px;flex:1}
+#panel-body > .top:first-child{position:sticky;top:-18px;z-index:2;margin:-18px -28px 0;padding:14px 28px 10px;background:rgba(14,30,52,.96);border-bottom:1px solid var(--line)}
 #panel-body .top b{font-size:20px;font-weight:600;color:var(--cyan);letter-spacing:.04em}
 #panel-body h2{margin-top:26px}
 .state-pill{display:inline-block;margin-top:10px;padding:4px 12px;border-radius:999px;border:1px solid var(--line-hi);background:rgba(67,230,255,.08);font-size:13px}
@@ -620,7 +621,12 @@ document.addEventListener("click", e => {
   if (button) return act(button.dataset.act, button);
   if (e.target.closest("input")) return;
   const card = e.target.closest(".card");
-  if (card) { S.view = null; S.sel = card.dataset.id; history.replaceState(null, "", "#" + encodeURIComponent(S.sel)); render(); }
+  if (card) { S.view = null; S.sel = card.dataset.id; history.replaceState(null, "", "#" + encodeURIComponent(S.sel)); render(); return; }
+  // Клік по порожньому місцю поза панеллю (фон між картками) закриває панель.
+  if ((S.sel || S.view) && !e.target.closest("#panel, header, label, a, select, textarea")) {
+    S.sel = null; S.view = null; S.pjEdit = null; S.iconFor = null;
+    history.replaceState(null, "", location.pathname); render();
+  }
 });
 document.getElementById("archive").addEventListener("change", render);
 document.getElementById("q").addEventListener("input", e => { S.q = e.target.value; render(); });
