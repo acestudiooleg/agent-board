@@ -2,6 +2,8 @@
 # Відкрити дошку окремим застосунком (власне вікно й значок на панелі задач). Спершу запускає дошку, якщо вона ще не працює.
 # usage: ./open.sh config.toml | config.work.toml
 set -eu
+# Не передавати змінні сесії Claude Code (якщо запущено з неї) — інакше термінали від дошки їх успадкують.
+for v in $(env | sed -n 's/^\(CLAUDE[A-Za-z0-9_]*\)=.*/\1/p'); do [ "$v" = CLAUDE_CONFIG_DIR ] || unset "$v"; done
 cd "$(dirname "$0")"
 CONFIG="${1:-config.toml}"
 ./run.sh "$CONFIG" >/dev/null

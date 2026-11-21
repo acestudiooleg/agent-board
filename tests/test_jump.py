@@ -4,7 +4,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from agent_board.jump import (focus_live, open_in_terminator, resume_command, terminator_config,
+from agent_board.jump import (clean_env, focus_live, open_in_terminator, resume_command, terminator_config,
                                terminator_config_from_user, window_for_pid)
 
 CARD = {"id": "abc", "cwd": "/home/u/my dir", "live_status": None, "title": "Опція подарункового замовлення"}
@@ -114,6 +114,14 @@ class UserConfigTest(unittest.TestCase):
 
     def test_missing_user_config(self):
         self.assertIsNone(terminator_config_from_user("T", "x", "/w", source=Path("/nonexistent/config")))
+
+
+
+class CleanEnvTest(unittest.TestCase):
+    def test_strips_claude_session_vars(self):
+        env = clean_env({"PATH": "/bin", "CLAUDECODE": "1", "CLAUDE_CODE_SESSION_ID": "x", "CLAUDE_PID": "1",
+                         "CLAUDE_CONFIG_DIR": "/w"})
+        self.assertEqual(env, {"PATH": "/bin", "CLAUDE_CONFIG_DIR": "/w"})
 
 
 if __name__ == "__main__":

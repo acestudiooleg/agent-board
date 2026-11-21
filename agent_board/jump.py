@@ -1,4 +1,5 @@
 import copy
+import os
 import shlex
 import subprocess
 from pathlib import Path
@@ -161,6 +162,13 @@ def focus_live(card: dict, run=subprocess.run) -> str | None:
     return None
 
 
+def clean_env(environ=None) -> dict:
+    """Середовище без змінних Claude Code (CLAUDECODE, CLAUDE_CODE_*…). Якщо дошку запустили з сесії Claude,
+    вони успадковуються терміналом, і новий claude у ньому вважає себе дочірньою сесією: не з'являється на дошці."""
+    environ = os.environ if environ is None else environ
+    return {k: v for k, v in environ.items() if not (k.startswith("CLAUDE") and k != "CLAUDE_CONFIG_DIR")}
+
+
 def open_in_terminator(card: dict, config_dir: str = "", popen=subprocess.Popen,
                        config_path: Path = TERMINATOR_CONFIG, user_config: Path = USER_TERMINATOR_CONFIG,
                        run=subprocess.run) -> dict:
@@ -180,7 +188,7 @@ def open_in_terminator(card: dict, config_dir: str = "", popen=subprocess.Popen,
         text = terminator_config_from_user(title, command, cwd, source=user_config) or terminator_config(title, command, cwd)
         config_path.write_text(text, encoding="utf-8")
         popen(["terminator", "-u", "-g", str(config_path), "-l", "agent-board"], stdin=subprocess.DEVNULL,
-              stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, start_new_session=True)
+              stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, start_new_session=True, env=clean_env())
     except OSError as exc:
         return {"ok": False, "error": str(exc), "command": command}
     return {"ok": True, "command": command}
