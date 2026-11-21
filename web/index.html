@@ -614,7 +614,9 @@ document.addEventListener("keydown", e => {
   else if (e.key === "Escape" && document.activeElement === q) { q.value = ""; S.q = ""; q.blur(); render(); }
 });
 
-function apply(d) { S.cards = d.cards; S.haiku = d.haiku; S.board = d.board || S.board; document.documentElement.classList.toggle("planet-mars", d.planet === "mars"); render(); }
+function apply(d) { S.cards = d.cards; S.haiku = d.haiku; S.board = d.board || S.board; document.documentElement.classList.toggle("planet-mars", d.planet === "mars"); render();
+  // Лічильники панелі «Проєкти» оновлюємо разом із дошкою, але не посеред введення у формі.
+  if (S.view === "projects" && !document.activeElement?.matches("input")) loadProjects(); }
 fetch("/api/board").then(r => r.json()).then(apply);
 if (S.view === "projects") loadProjects();
 function connect() {
