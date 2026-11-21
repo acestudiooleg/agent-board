@@ -303,9 +303,6 @@ header h1{display:flex;align-items:center;gap:10px}
 .pj-icons{display:flex;flex-wrap:wrap;gap:4px;padding:6px 10px 10px;align-items:center}
 .pj-icons button{font-size:16px;padding:2px 6px}
 .pj-icons input{width:70px;font:inherit;padding:3px 8px;border-radius:8px;border:1px solid var(--line-hi);background:rgba(8,20,40,.55);color:var(--ink)}
-#subchips{display:flex;gap:6px;flex-wrap:wrap;flex-basis:100%}
-#subchips:empty{display:none}
-#subchips .chip{font-size:12px;padding:3px 10px}
 #q{font:inherit;font-size:13px;width:260px;max-width:100%;padding:6px 12px;border-radius:999px;border:1px solid var(--line-hi);
   background:rgba(8,20,40,.55);color:var(--ink);outline:none}
 #q:focus{border-color:var(--cyan);box-shadow:0 0 12px rgba(67,230,255,.25)}
@@ -327,11 +324,11 @@ header h1{display:flex;align-items:center;gap:10px}
 <canvas id="stars" aria-hidden="true"></canvas><div class="planet" aria-hidden="true"></div><div class="moon" aria-hidden="true"></div><div class="planet2" aria-hidden="true"></div><div class="planet3" aria-hidden="true"></div>
 <div class="aurora" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></div>
 <header><h1><img id="board-icon" src="/icon" alt="" onerror="this.replaceWith(document.createTextNode('👥'))"><span id="board">Команда</span></h1><span id="stats"></span><button id="projects-btn" style="margin-left:auto" title="Ваші проєкти: назва й тека">🗂 Проєкти</button><button id="theme" title="Перемкнути тему"></button><label><input type="checkbox" id="archive"> показати архів</label></header>
-<div id="filters"><input id="q" type="search" placeholder="Пошук карток…  ( / )" autocomplete="off"><div id="chips"></div><div id="subchips"></div></div>
+<div id="filters"><input id="q" type="search" placeholder="Пошук карток…  ( / )" autocomplete="off"><div id="chips"></div></div>
 <main><div id="room"></div></main><aside id="panel"><div id="panel-actions"></div><div id="panel-body"></div></aside>
 <div id="toast"></div>
 <script>
-const S = {cards: [], family: "Усі", project: null, q: "", view: location.hash === "#projects" ? "projects" : null, projects: null, pjEdit: null,
+const S = {cards: [], project: null, q: "", view: location.hash === "#projects" ? "projects" : null, projects: null, pjEdit: null,
   sel: location.hash === "#projects" ? null : decodeURIComponent(location.hash.slice(1)) || null, haiku: {}, html: {}, board: "Команда"};
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"}[c]));
 // Короткі уривки на картках — без Markdown-розмітки
@@ -472,26 +469,19 @@ function render() {
   const terms = S.q.toLowerCase().split(/\s+/).filter(Boolean);
   const hay = c => [c.title, c.summary?.about, c.summary?.waiting_for, c.project, c.worktree, c.family, c.name,
                     c.first_user, c.last_user, c.last_agent, c.cwd].join(" ").toLowerCase();
-  const cards = S.cards.filter(c => (S.family === "Усі" || c.family === S.family) && (!S.project || c.project === S.project) && terms.every(t => hay(c).includes(t)));
+  const cards = S.cards.filter(c => (!S.project || c.project === S.project) && terms.every(t => hay(c).includes(t)));
   const live = S.cards.filter(c => c.live_status).length;
   const waiting = S.cards.filter(c => c.state === "waiting").length;
   document.getElementById("stats").textContent = `${live} живих · ${waiting} чекають на вас` + haikuText();
   document.title = (waiting ? `(${waiting}) ` : "") + S.board;
   document.getElementById("board").textContent = S.board;
-  const counts = {}, icons = {};
-  S.cards.forEach(c => { icons[c.family] = c.icon; if (!["done", "snoozed"].includes(c.state)) counts[c.family] = (counts[c.family] || 0) + 1; });
-  const fams = ["Усі", ...Object.keys(counts).sort((a, b) => counts[b] - counts[a])];
-  setHtml("chips", fams.map(f =>
-    `<button class="chip ${S.family === f ? "on" : ""}" data-f="${esc(f)}">${f === "Усі" ? "Усі" : esc(icons[f]) + " " + esc(f) + " " + counts[f]}</button>`).join(""));
-  // Другий ряд: проєкти всередині вибраної родини, якщо їх більше одного.
+  // Фільтр — окремі таблетки проєктів; значок — власний значок проєкту або значок його родини.
   const pcounts = {}, pIcons = {};
-  S.cards.forEach(c => { if (c.project_icon) pIcons[c.project] = c.project_icon; });
-  // Родина для другого ряду: вибрана, а якщо на дошці лише одна родина — вона, без додаткового кліку.
-  const famKeys = Object.keys(counts), pf = S.family !== "Усі" ? S.family : famKeys.length === 1 ? famKeys[0] : null;
-  if (pf) S.cards.forEach(c => { if (c.family === pf && !["done", "snoozed"].includes(c.state)) pcounts[c.project] = (pcounts[c.project] || 0) + 1; });
-  const projs = Object.keys(pcounts).sort((a, b) => pcounts[b] - pcounts[a]);
+  S.cards.forEach(c => { pIcons[c.project] = c.project_icon || pIcons[c.project] || c.icon;
+    if (!["done", "snoozed"].includes(c.state)) pcounts[c.project] = (pcounts[c.project] || 0) + 1; });
+  const projs = Object.keys(pcounts).sort((a, b) => pcounts[b] - pcounts[a] || a.localeCompare(b));
   if (S.project && !pcounts[S.project]) S.project = null;
-  setHtml("subchips", projs.length < 2 ? "" : [`<button class="chip ${S.project ? "" : "on"}" data-p="">усі проєкти</button>`,
+  setHtml("chips", [`<button class="chip ${S.project ? "" : "on"}" data-p="">Усі</button>`,
     ...projs.map(p => `<button class="chip ${S.project === p ? "on" : ""}" data-p="${esc(p)}">${pIcons[p] ? esc(pIcons[p]) + " " : ""}${esc(p)} ${pcounts[p]}</button>`)].join(""));
   setHtml("room", ZONES.filter(z => !z.archive || showArchive).map(z => {
     const list = cards.filter(c => z.states.includes(c.state));
@@ -626,7 +616,6 @@ async function act(a, btn) {
 document.addEventListener("click", e => {
   const chip = e.target.closest(".chip");
   if (chip?.dataset.p !== undefined) { S.project = chip.dataset.p || null; return render(); }
-  if (chip) { S.family = chip.dataset.f; S.project = null; return render(); }
   const button = e.target.closest("[data-act]");
   if (button) return act(button.dataset.act, button);
   if (e.target.closest("input")) return;
