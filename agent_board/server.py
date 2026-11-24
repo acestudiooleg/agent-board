@@ -16,7 +16,7 @@ from .dictation import MAX_PCM, Dictation
 from .jump import TERMINATOR_CONFIG, clean_env, open_in_terminator
 from .store import Store
 from .term_api import TermService
-from .terminal import Terminals
+from .terminal import Terminals, title_settings
 
 ROOT = Path(__file__).resolve().parent.parent
 WEB = ROOT / "web" / "index.html"
@@ -230,6 +230,8 @@ def make_handler(board: Board, cfg: Config, launcher=subprocess.Popen, terminato
                                                                  attach=term.jump_info(sid) if term else None))
             if path.startswith("/api/term/") and term:
                 return self._json(*term.post(path, body))
+            if path == "/api/title":
+                return self._json(200, {"title": board.take_title(sid) if isinstance(sid, str) else None})
             if path == "/api/open":
                 return self._open(body.get("url"))
             if path == "/api/projects":
@@ -290,7 +292,8 @@ def scan_loop(board: Board, interval: float, term: TermService | None = None) ->
 def build(cfg: Config) -> tuple[Board, ThreadingHTTPServer]:
     """Дошка з уже виконаним першим сканом і сервер, який ще не слухає запити."""
     board = Board(cfg, Store(cfg.db_path))
-    term = TermService(board, Terminals(f"agent-board-{cfg.port}", cfg.config_dir_env()),
+    term = TermService(board, Terminals(f"agent-board-{cfg.port}", cfg.config_dir_env(),
+                                        settings=title_settings(cfg.port) if cfg.auto_title else ""),
                        Dictation(cfg.dictation_model, cfg.dictation_threads, cfg.dictation_languages))
     board.term = term
     check = threading.Thread(target=term.dictation.check, daemon=True)

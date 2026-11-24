@@ -18,7 +18,7 @@ SIMPLE_KEYS = (
     "summary_concurrency", "summary_per_hour", "summary_retry_seconds", "summary_backoff_max_seconds",
     "summary_breaker_failures", "summary_breaker_seconds", "summary_timeout_seconds",
     "summary_command", "summary_exclude_families", "worktree_rules",
-    "dictation_model", "dictation_threads", "dictation_languages",
+    "auto_title", "dictation_model", "dictation_threads", "dictation_languages",
 )
 PATH_KEYS = ("claude_dir", "db_path", "haiku_cwd", "icon")
 DEFAULT_CLAUDE_DIR = Path.home() / ".claude"
@@ -54,6 +54,7 @@ class Config:
     summary_breaker_failures: int = 5
     summary_breaker_seconds: int = 3600
     summary_timeout_seconds: int = 120
+    auto_title: bool = True  # розмови дошки перейменовуються за темою картки (хук лише для них, ваш settings.json не змінюється)
     dictation_model: str = "small"  # модель faster-whisper з локального кешу
     dictation_threads: int = 8
     dictation_languages: list[str] = field(default_factory=lambda: ["uk", "ru", "en"])  # між чим вибирає «авто»

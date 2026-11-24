@@ -17,6 +17,16 @@ log = logging.getLogger("agent_board")
 SKIP_SUMMARY_STATES = ("working", "done")
 
 
+def short_title(text) -> str:
+    """Один рядок без керівних символів, лапок і крапки в кінці, до 60 символів."""
+    text = "".join(ch if ch.isprintable() else " " for ch in text) if isinstance(text, str) else ""
+    text = " ".join(text.split()).rstrip(". ")
+    quotes = "\"'«»“”„"
+    if len(text) > 2 and text[0] in quotes and text[-1] in quotes and not any(q in text[1:-1] for q in quotes):
+        text = text[1:-1].rstrip(". ").strip()  # у лапках уся назва, а не окреме слово
+    return text if len(text) <= 60 else text[:60].rsplit(" ", 1)[0].rstrip(" ,;:—–-")
+
+
 class Board:
     def __init__(self, cfg: Config, store: Store):
         self.cfg, self.store = cfg, store
@@ -188,7 +198,7 @@ class Board:
             cards.append({
                 "id": sid,
                 "title": t.title or (summary or {}).get("about") or (t.first_user or "")[:80] or (lv.name if lv else sid[:8]),
-                "name": lv.name if lv else None,
+                "name": lv.name if lv else None, "ai_title": t.title,
                 "project": ref.name, "worktree": ref.worktree, "family": family, "icon": icon, "project_icon": project_icons.get(ref.name),
                 "project_root": ref.root, "project_kind": ref.kind,
                 "cwd": cwd, "branch": t.branch,
@@ -284,6 +294,22 @@ class Board:
 
     def card(self, sid: str) -> dict | None:
         return next((c for c in self.snapshot()[1] if c["id"] == sid), None)
+
+    def take_title(self, sid: str) -> str | None:
+        """Нова назва для розмови за темою картки (і запам'ятати, що дала її дошка). None — міняти не треба або не можна.
+        Назву, яку дали ви (/rename), не чіпаємо: дозволено лише для назв від Claude, хука або попередньої нашої."""
+        card = self.card(sid)
+        lv = read_live(self.cfg.claude_dir / "sessions").get(sid)
+        if not self.cfg.auto_title or not card or not lv:
+            return None
+        ours = self.store.auto_title(sid)
+        if lv.name_source not in ("derived", "auto", "hook") and not (ours and lv.name == ours):
+            return None
+        title = short_title((card["summary"] or {}).get("title")) or short_title(card["ai_title"])
+        if not title or title == lv.name:
+            return None
+        self.store.set_auto_title(sid, title)
+        return title
 
     # ---------- ваші проєкти ----------
     def projects_overview(self) -> dict:

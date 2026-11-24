@@ -32,6 +32,7 @@ class Store:
                 CREATE TABLE IF NOT EXISTS calls(ts REAL NOT NULL);
                 CREATE TABLE IF NOT EXISTS projects(path TEXT PRIMARY KEY, name TEXT NOT NULL);
                 CREATE TABLE IF NOT EXISTS project_icons(name TEXT PRIMARY KEY, icon TEXT NOT NULL);
+                CREATE TABLE IF NOT EXISTS auto_titles(session_id TEXT PRIMARY KEY, title TEXT NOT NULL);
                 """
             )
 
@@ -107,6 +108,16 @@ class Store:
                 self._db.execute("INSERT OR REPLACE INTO project_icons VALUES (?, ?)", (name, icon))
             else:
                 self._db.execute("DELETE FROM project_icons WHERE name = ?", (name,))
+
+    def auto_title(self, session_id: str) -> str | None:
+        """Остання назва, яку розмові дала дошка."""
+        with self._lock:
+            row = self._db.execute("SELECT title FROM auto_titles WHERE session_id = ?", (session_id,)).fetchone()
+        return row[0] if row else None
+
+    def set_auto_title(self, session_id: str, title: str) -> None:
+        with self._lock, self._db:
+            self._db.execute("INSERT OR REPLACE INTO auto_titles VALUES (?, ?)", (session_id, title))
 
     def close(self) -> None:
         with self._lock:

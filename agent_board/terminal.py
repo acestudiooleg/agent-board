@@ -1,7 +1,9 @@
 """Розмови, що працюють у дошці: окремий сервер tmux. Вікно браузера лише дивиться на них."""
+import json
 import re
 import shlex
 import subprocess
+import sys
 import threading
 import time
 from pathlib import Path
@@ -31,10 +33,17 @@ KEEP_ERROR = ('; rc=$?; case $rc in 0|129|130|143) ;; *) '
               'printf "\\n[Claude завершився з кодом %s — Enter закриє термінал]\\n" "$rc"; read -r _;; esac')
 
 
-def claude_argv(sid: str, config_dir: str = "", new: bool = False) -> list[str]:
+def title_settings(port: int) -> str:
+    """Налаштування лише для сесій дошки (--settings): хук, що дає Claude Code назву розмови."""
+    hook = shlex.join([sys.executable, "-I", str(Path(__file__).with_name("title_hook.py")), str(port)])
+    return json.dumps({"hooks": {"UserPromptSubmit": [{"hooks": [{"type": "command", "command": hook, "timeout": 3}]}]}})
+
+
+def claude_argv(sid: str, config_dir: str = "", new: bool = False, settings: str = "") -> list[str]:
     flag = "--session-id" if new else "--resume"
+    extra = f" --settings {shlex.quote(settings)}" if settings else ""
     env = f"CLAUDE_CONFIG_DIR={shlex.quote(config_dir)} " if config_dir else ""
-    return system.shell_argv(f"{env}claude {flag} {shlex.quote(sid)}{KEEP_ERROR}")
+    return system.shell_argv(f"{env}claude {flag} {shlex.quote(sid)}{extra}{KEEP_ERROR}")
 
 
 def clean_text(text: str) -> str:
@@ -44,10 +53,10 @@ def clean_text(text: str) -> str:
 
 
 class Terminals:
-    def __init__(self, socket: str, config_dir: str = "", command=None, new_command=None):
+    def __init__(self, socket: str, config_dir: str = "", command=None, new_command=None, settings: str = ""):
         self.socket = socket
-        self.command = command or (lambda sid: claude_argv(sid, config_dir))
-        self.new_command = new_command or command or (lambda sid: claude_argv(sid, config_dir, new=True))
+        self.command = command or (lambda sid: claude_argv(sid, config_dir, settings=settings))
+        self.new_command = new_command or command or (lambda sid: claude_argv(sid, config_dir, new=True, settings=settings))
         self.lock = threading.RLock()
 
     # ---------- tmux ----------

@@ -19,7 +19,8 @@ PROMPT_HEADER = """Ти пишеш короткий звіт про розмов
 Розмову запущено в проєкті: {project} (тека {cwd}).
 Відомі проєкти: {known}.
 Поверни ЛИШЕ JSON без пояснень, українською:
-{{"about": "про що розмова, одне речення",
+{{"title": "назва розмови, 2–5 слів, без лапок і крапки",
+  "about": "про що розмова, одне речення",
   "done": ["що вже зроблено, до 5 коротких пунктів"],
   "waiting_for": "чого агент чекає від людини, одне речення, або порожній рядок",
   "related_projects": ["інші проєкти зі списку відомих, яких стосується розмова"],
@@ -72,6 +73,7 @@ def parse_response(stdout: str) -> dict:
         return [str(x) for x in value] if isinstance(value, list) else []
 
     return {
+        "title": str(data.get("title") or "").strip(),
         "about": str(data.get("about", "")).strip(),
         "done": as_list(data.get("done"))[:5],
         "waiting_for": str(data.get("waiting_for", "")).strip(),

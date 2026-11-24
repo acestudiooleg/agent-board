@@ -52,7 +52,7 @@ class PromptTest(unittest.TestCase):
 class ParseTest(unittest.TestCase):
     def test_extracts_json_from_fenced_result(self):
         out = parse_response('{"result": "```json\\n{\\"about\\": \\"A\\", \\"done\\": [\\"x\\", 2]}\\n```"}')
-        self.assertEqual(out, {"about": "A", "done": ["x", "2"], "waiting_for": "",
+        self.assertEqual(out, {"title": "", "about": "A", "done": ["x", "2"], "waiting_for": "",
                                "related_projects": [], "likely_project": ""})
 
     def test_errors(self):
