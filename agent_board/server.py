@@ -10,7 +10,7 @@ from urllib.parse import urlsplit
 
 from .board import Board
 from .config import Config, load_config
-from .jump import TERMINATOR_CONFIG, open_in_terminator
+from .jump import TERMINATOR_CONFIG, clean_env, open_in_terminator
 from .store import Store
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -25,6 +25,17 @@ def board_payload(board: Board) -> dict:
     version, cards = board.snapshot()
     return {"version": version, "board": board.cfg.board_name, "planet": board.cfg.planet, "cards": cards,
             "haiku": board.summary_status()}
+
+
+def is_web_url(url) -> bool:
+    """Лише http(s) із хостом, без пробілів і керівних символів: іде аргументом у xdg-open."""
+    if not isinstance(url, str) or len(url) > 4096 or any(ch.isspace() or not ch.isprintable() for ch in url):
+        return False
+    try:
+        parts = urlsplit(url)
+        return parts.scheme in ("http", "https") and bool(parts.hostname)
+    except ValueError:
+        return False
 
 
 def make_handler(board: Board, cfg: Config, launcher=subprocess.Popen, terminator_config: Path = TERMINATOR_CONFIG):
@@ -151,9 +162,22 @@ def make_handler(board: Board, cfg: Config, launcher=subprocess.Popen, terminato
                     return self._json(404, {"error": "unknown session"})
                 return self._json(200, open_in_terminator(card, cfg.config_dir_env(), popen=launcher,
                                                                  config_path=terminator_config))
+            if path == "/api/open":
+                return self._open(body.get("url"))
             if path == "/api/projects":
                 return self._projects(body)
             return self._json(404, {"error": "not found"})
+
+        def _open(self, url):
+            """Посилання з панелі — у вашому звичайному браузері: вікно дошки має окремий профіль Chrome без логінів."""
+            if not is_web_url(url):
+                return self._json(400, {"error": "bad url"})
+            try:
+                launcher(["xdg-open", url], stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                         start_new_session=True, env=clean_env())
+            except OSError as exc:
+                return self._json(500, {"error": str(exc)})
+            return self._json(200, {"ok": True})
 
         def _projects(self, body: dict):
             """{action: save, path, name, old_path?} | {action: delete, path} | {action: icon, name, icon}.

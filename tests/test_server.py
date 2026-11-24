@@ -71,6 +71,13 @@ class ServerTest(unittest.TestCase):
         self.assertEqual(self.launched[0][:2], ["terminator", "-u"])  # справжній Terminator у тестах не запускається
         self.assertEqual(self.req("POST", "/api/jump", {"id": "zzz"})[0], 404)
 
+    def test_open_link_in_default_browser(self):
+        self.assertEqual(self.req("POST", "/api/open", {"url": "https://example.com/a?b=1"})[0], 200)
+        self.assertEqual(self.launched, [["xdg-open", "https://example.com/a?b=1"]])
+        for bad in ("file:///etc/passwd", "javascript:alert(1)", "--help", "https://", "http://[", "https://a b", 5, None, "https://e.com/" + "x" * 5000):
+            self.assertEqual(self.req("POST", "/api/open", {"url": bad})[0], 400, bad)
+        self.assertEqual(len(self.launched), 1)
+
     def test_sse_sends_board_event(self):
         conn = http.client.HTTPConnection("127.0.0.1", self.port, timeout=5)
         conn.request("GET", "/api/events")
