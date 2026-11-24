@@ -11,9 +11,7 @@ window.Term = (() => {
     if (term) return;
     term = new Terminal({cursorBlink: true, scrollback: 5000, allowProposedApi: false, macOptionIsMeta: false,
       fontFamily: '"JetBrains Mono", "DejaVu Sans Mono", monospace', fontSize: fontSize(),
-      theme: {background: "#0b1524", foreground: "#e8f1f8", cursor: "#43e6ff", selectionBackground: "#2b5876",
-        black: "#1b2536", red: "#ff5c8a", green: "#a6e22e", yellow: "#f4bf75", blue: "#66b3ff", magenta: "#c39bff", cyan: "#66e6ef", white: "#e8f1f8",
-        brightBlack: "#7f90a5", brightRed: "#ff7fa3", brightGreen: "#b9f04a", brightYellow: "#ffd590", brightBlue: "#8cc6ff", brightMagenta: "#d6b8ff", brightCyan: "#8ff3fa", brightWhite: "#ffffff"}});
+      theme: Themes.term(), minimumContrastRatio: Themes.termContrast()});
     fit = new FitAddon.FitAddon();
     term.loadAddon(fit);
     term.loadAddon(new WebLinksAddon.WebLinksAddon((e, url) => openLink(url)));
@@ -256,6 +254,7 @@ window.Term = (() => {
   document.addEventListener("keydown", e => {
     if (S.dictation && e.ctrlKey && e.code === "Space" && document.body.classList.contains("tab-term")) { e.preventDefault(); mic(); }
   });
+  document.addEventListener("themechange", () => { if (term) { term.options.theme = Themes.term(); term.options.minimumContrastRatio = Themes.termContrast(); } });
   document.addEventListener("fontchange", () => { grow(); if (term) { term.options.fontSize = fontSize(); doFit(); } });
   window.addEventListener("pagehide", detach);
   // Чи можна оновити сторінку, нічого не загубивши: немає запису й ненадісланого тексту.

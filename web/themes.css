@@ -1,0 +1,67 @@
+/* Класичні схеми розробників: рівні поверхні, тонкі рамки, моноширинні заголовки. Кольори — з themes.js (--t-*). */
+html.flat{--ink:var(--t-fg);--muted:var(--t-muted);--line:var(--t-line);--line-hi:var(--t-line-hi);--cyan:var(--t-accent);--teal:var(--t-green);
+  --amber:var(--t-warn);--violet:var(--t-violet);--rose:var(--t-red);--mono:"JetBrains Mono","DejaVu Sans Mono",monospace;
+  --soft:color-mix(in srgb,var(--t-accent) 12%,transparent);background:var(--t-bg);color-scheme:dark}
+html.flat.light{color-scheme:light}
+html.flat #stars,html.flat .planet,html.flat .planet2,html.flat .planet3,html.flat .moon,html.flat .aurora{display:none}
+html.flat body{font-family:system-ui,"Segoe UI",Roboto,sans-serif;letter-spacing:0}
+html.flat ::selection{background:color-mix(in srgb,var(--t-accent) 35%,transparent)}
+html.flat ::-webkit-scrollbar-thumb{background:var(--t-line-hi);border-radius:0}
+html.flat *{backdrop-filter:none !important;-webkit-backdrop-filter:none !important}
+
+html.flat header{background:var(--t-bg2);border-bottom:1px solid var(--t-line);box-shadow:none}
+html.flat header h1{font-family:var(--mono);letter-spacing:0;text-transform:none;font-weight:600}
+html.flat #stats,html.flat label,html.flat .chip,html.flat button,html.flat select,html.flat h2,html.flat .name,html.flat .proj,html.flat .badge,
+html.flat .state-pill,html.flat .day,html.flat #q,html.flat #panel-body .top b,html.flat #panel-tabs .ttl{font-family:var(--mono)}
+html.flat #stats{letter-spacing:0}
+html.flat #stats::before{box-shadow:none}
+html.flat h2{letter-spacing:.04em;text-transform:none;font-size:12px}
+html.flat h2::after{background:var(--t-line)}
+html.flat .day{letter-spacing:0;text-transform:none}
+
+html.flat .card,html.flat .row{background:var(--t-bg2);border:1px solid var(--t-line);border-radius:6px;box-shadow:none}
+html.flat .card{border-left:3px solid var(--t-line-hi)}
+html.flat .card:hover,html.flat .row:hover{transform:none;background:color-mix(in srgb,var(--t-accent) 7%,var(--t-bg2));border-color:var(--t-line-hi);box-shadow:none}
+html.flat .card.waiting,html.flat .card.waiting:hover{border-left-color:var(--t-warn);box-shadow:none}
+html.flat .card.working,html.flat .card.working:hover{border-left-color:var(--t-accent);box-shadow:none}
+html.flat .card.waiting_bg,html.flat .card.idle_live,html.flat .card.waiting_bg:hover,html.flat .card.idle_live:hover{border-left-color:var(--t-violet);box-shadow:none}
+html.flat .card.sel{outline:1px solid var(--t-accent);outline-offset:0;border-color:var(--t-accent)}
+html.flat .row.sel{background:var(--soft);border-color:var(--t-accent)}
+html.flat .row .rn{text-shadow:none}
+html.flat .compact .card{border-radius:4px;border-left-width:1px;box-shadow:none}
+html.flat .ask,html.flat .card.waiting .ask,html.flat .card.waiting_bg .ask{background:color-mix(in srgb,var(--t-fg) 5%,transparent);border:none;border-left:2px solid var(--t-line-hi);border-radius:0 4px 4px 0}
+html.flat .card.waiting .ask{border-left-color:var(--t-warn)}
+html.flat .warn{background:color-mix(in srgb,var(--t-warn) 12%,transparent);border-left-color:var(--t-warn);border-radius:0 4px 4px 0}
+html.flat .badge{background:color-mix(in srgb,var(--t-green) 14%,transparent);border-radius:3px}
+
+html.flat .chip{background:transparent;border:1px solid var(--t-line);border-radius:4px;box-shadow:none}
+html.flat .chip:hover{border-color:var(--t-line-hi);box-shadow:none}
+html.flat .chip.on{background:var(--soft);border-color:var(--t-accent);color:var(--t-accent);box-shadow:none}
+html.flat button,html.flat input[type=date],html.flat #theme,html.flat #term-lang{background:var(--t-bg);border:1px solid var(--t-line-hi);border-radius:4px;color:var(--t-fg);box-shadow:none}
+html.flat button:hover,html.flat input[type=date]:hover{border-color:var(--t-accent);box-shadow:none}
+html.flat button.primary{background:var(--t-accent);border-color:var(--t-accent);color:var(--t-on-accent);box-shadow:none}
+html.flat button.primary:hover{filter:brightness(1.08)}
+html.flat input[type=date],html.flat input[type=checkbox]{color-scheme:inherit}
+html.flat input:not([type=checkbox]),html.flat textarea,html.flat #q,html.flat #term-text,html.flat .pj-form input,html.flat .pj-icons input{background:var(--t-bg);border:1px solid var(--t-line-hi);border-radius:4px;color:var(--t-fg)}
+html.flat #q:focus,html.flat #term-text:focus{border-color:var(--t-accent);box-shadow:none}
+html.flat ::placeholder{color:var(--t-muted);opacity:1}
+html.flat #toast{background:var(--t-bg2);border:1px solid var(--t-accent);border-radius:4px;box-shadow:0 6px 24px rgba(0,0,0,.3)}
+
+html.flat #panel{background:var(--t-bg);border-left:1px solid var(--t-line);box-shadow:none}
+html.flat #panel-actions,html.flat #panel-tabs,html.flat #term-bar{background:var(--t-bg2);border-color:var(--t-line)}
+html.flat #panel-body > .top:first-child{background:var(--t-bg);border-bottom-color:var(--t-line)}
+html.flat #panel-body .top b{font-size:17px;letter-spacing:0}
+html.flat #panel-tabs .tab.on{background:var(--soft);border-color:var(--t-accent);color:var(--t-accent)}
+html.flat .state-pill{background:transparent;border-color:var(--t-line-hi);border-radius:4px;box-shadow:none}
+html.flat .pj-row{background:var(--t-bg2);border-color:var(--t-line);border-radius:4px}
+
+html.flat .md h3,html.flat .md h4,html.flat .md strong{color:var(--t-strong)}
+html.flat .md em{color:inherit}
+html.flat .md code{background:color-mix(in srgb,var(--t-fg) 9%,transparent);border:none;border-radius:3px;color:var(--t-fg)}
+html.flat .md pre{background:var(--t-bg2);border:1px solid var(--t-line);border-radius:4px}
+html.flat .md pre code{background:none;color:var(--t-fg)}
+html.flat .md blockquote{color:var(--t-muted)}
+
+html.flat #term-view{background:var(--t-bg)}
+html.flat #term-empty{background:color-mix(in srgb,var(--t-bg) 94%,transparent)}
+html.flat #term-mic.rec{background:color-mix(in srgb,var(--t-red) 25%,transparent);border-color:var(--t-red);color:var(--t-fg)}

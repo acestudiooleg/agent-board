@@ -3,11 +3,12 @@
 <head>
 <link rel="stylesheet" href="/vendor/xterm.css">
 <meta charset="utf-8">
+<meta name="theme-color" content="#050c1c">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Команда</title>
 <link rel="icon" href="/icon">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Exo+2:wght@300;400;500;600&family=JetBrains+Mono:wght@400&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Exo+2:wght@300;400;500;600&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
 <style>
 /* «Нічна обсерваторія»: темне небо, напівпрозорі голографічні панелі, біолюмінесцентні акценти */
 :root{
@@ -217,7 +218,7 @@ html.theme-deep .card::before{background:linear-gradient(115deg,rgba(255,255,255
 html.theme-deep .card::after{background:linear-gradient(90deg,transparent,rgba(200,245,255,.8),transparent)}
 html.theme-deep #panel{background:linear-gradient(160deg,rgba(40,80,120,.62),rgba(10,24,42,.82))}
 html.theme-deep header{background:linear-gradient(180deg,rgba(10,24,40,.75),rgba(4,10,20,.55))}
-#theme{font-size:12px;padding:4px 10px}
+#theme{font:inherit;font-size:12px;padding:4px 8px;border-radius:8px;border:1px solid rgba(255,255,255,.22);background:#0c2036;color:var(--ink);cursor:pointer}
 
 /* ===== Повзунок яскравості бликів (--glow: 0…1.5) ===== */
 .aurora{opacity:min(1,var(--glow,1));filter:brightness(max(1,var(--glow,1)))}
@@ -350,12 +351,13 @@ body.no-mic #term-mic,body.no-mic #term-lang{display:none}
 #term-stop{display:none;margin-left:auto}
 #term.on #term-stop{display:inline-block}
 </style>
-<script>try { if (localStorage.getItem("agent-board-theme") === "deep") document.documentElement.classList.add("theme-deep"); } catch (e) {}</script>
+<link rel="stylesheet" href="/themes.css">
+<script src="/themes.js"></script>
 </head>
 <body>
 <canvas id="stars" aria-hidden="true"></canvas><div class="planet" aria-hidden="true"></div><div class="moon" aria-hidden="true"></div><div class="planet2" aria-hidden="true"></div><div class="planet3" aria-hidden="true"></div>
 <div class="aurora" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></div>
-<header><h1><img id="board-icon" src="/icon" alt="" onerror="this.replaceWith(document.createTextNode('👥'))"><span id="board">Команда</span></h1><span id="stats"></span><button class="primary" data-act="new" style="margin-left:auto" title="Почати нову розмову з Claude в теці проєкту">＋ Новий чат</button><button id="projects-btn" title="Ваші проєкти: назва й тека">🗂 Проєкти</button><span class="fz"><button data-act="font" data-k="board" data-d="-1" title="Дрібніший шрифт">A−</button><button data-act="font" data-k="board" data-d="1" title="Більший шрифт">A+</button></span><button id="theme" title="Перемкнути тему"></button><label><input type="checkbox" id="archive"> показати архів</label></header>
+<header><h1><img id="board-icon" src="/icon" alt="" onerror="this.replaceWith(document.createTextNode('👥'))"><span id="board">Команда</span></h1><span id="stats"></span><button class="primary" data-act="new" style="margin-left:auto" title="Почати нову розмову з Claude в теці проєкту">＋ Новий чат</button><button id="projects-btn" title="Ваші проєкти: назва й тека">🗂 Проєкти</button><span class="fz"><button data-act="font" data-k="board" data-d="-1" title="Дрібніший шрифт">A−</button><button data-act="font" data-k="board" data-d="1" title="Більший шрифт">A+</button></span><select id="theme" title="Тема дошки й термінала"></select><label><input type="checkbox" id="archive"> показати архів</label></header>
 <div id="filters"><input id="q" type="search" placeholder="Пошук карток…  ( / )" autocomplete="off"><div id="chips"></div></div>
 <main><div id="room"></div></main><aside id="panel"><div id="panel-actions"></div><div id="panel-tabs"></div><div id="panel-body"></div>
 <div id="term"><div id="term-view"><div id="term-screen"></div><div id="term-empty"></div></div>
@@ -821,7 +823,10 @@ setInterval(maybeReload, 5000);
               tw: Math.random() * Math.PI * 2, sp: .4 + Math.random() * 1.6, c: tints[Math.random() < .8 ? 0 : 1 + (Math.random() * 3 | 0)]};
     });
   }
+  let running = true;
+  const flat = () => document.documentElement.classList.contains("flat");  // класичні теми: неба немає, анімацію зупиняємо
   function frame(t) {
+    if (flat()) { running = false; return; }
     const dt = Math.min(t - last, 64) || 16; last = t;
     ctx.clearRect(0, 0, w, h);
     for (const s of stars) {
@@ -851,23 +856,12 @@ setInterval(maybeReload, 5000);
     }
   }
   addEventListener("resize", () => { resize(); if (still) frame(0); });
-  starfield.reset = () => { resize(); if (still) frame(0); };
+  starfield.reset = () => { resize(); if (still) frame(0); else if (!running && !flat()) { running = true; last = performance.now(); requestAnimationFrame(frame); } };
   document.addEventListener("visibilitychange", () => { if (!document.hidden && !still) { last = performance.now(); } });
   resize(); requestAnimationFrame(frame);
 })();
 
-// Перемикач тем: «Сяйво» (типова) і «Глибокий космос». Вибір пам'ятає браузер.
-(function themes() {
-  const btn = document.getElementById("theme"), root = document.documentElement;
-  const label = () => { btn.textContent = root.classList.contains("theme-deep") ? "🌑 Глибокий космос" : "🌌 Сяйво"; };
-  btn.addEventListener("click", () => {
-    const deep = root.classList.toggle("theme-deep");
-    try { localStorage.setItem("agent-board-theme", deep ? "deep" : "glare"); } catch (e) {}
-    label();
-    document.dispatchEvent(new Event("themechange"));
-  });
-  label();
-})();
+Themes.fill(document.getElementById("theme"));
 
 
 </script>

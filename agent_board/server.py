@@ -22,7 +22,7 @@ WEB = ROOT / "web" / "index.html"
 ICON_TYPES = {".svg": "image/svg+xml", ".png": "image/png"}
 log = logging.getLogger("agent_board")
 STATIC = {f"/{n}": t for n, t in (
-    ("terminal.js", "text/javascript"), ("vendor/xterm.js", "text/javascript"), ("vendor/addon-fit.js", "text/javascript"),
+    ("terminal.js", "text/javascript"), ("themes.js", "text/javascript"), ("themes.css", "text/css"), ("vendor/xterm.js", "text/javascript"), ("vendor/addon-fit.js", "text/javascript"),
     ("vendor/addon-web-links.js", "text/javascript"), ("vendor/xterm.css", "text/css"))}
 # Версія сторінки: відкриті вікна застосунку бачать, що після перезапуску дошки вона інша, і оновлюються самі.
 BUILD = hashlib.sha256(b"".join(p.read_bytes() for p in [WEB, *(WEB.parent / n[1:] for n in STATIC)])).hexdigest()[:12]
