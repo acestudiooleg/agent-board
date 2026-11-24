@@ -2,12 +2,13 @@
 import base64
 import logging
 import shlex
+import uuid
 
 from .attach import Viewer, Viewers, size_ok
 from .dictation import Dictation, DictationError
 from .live import LiveSession, read_live
 from .takeover import NeedsConfirm, Takeover
-from .terminal import PREFIX, TerminalError, Terminals
+from .terminal import PREFIX, SID_RE, TerminalError, Terminals
 
 log = logging.getLogger("agent_board")
 MAX_INPUT = 64 * 1024
@@ -84,7 +85,12 @@ class TermService:
 
     def _card(self, body: dict) -> dict | None:
         sid = body.get("id")
-        return self.board.card(sid) if isinstance(sid, str) else None
+        if not isinstance(sid, str):
+            return None
+        card = self.board.card(sid)
+        if card is None and SID_RE.fullmatch(sid) and PREFIX + sid in self.terminals.panes():
+            card = {"id": sid, "cwd": ""}  # новий чат, якого дошка ще не побачила
+        return card
 
     def _viewer(self, body: dict) -> Viewer:
         viewer = self.viewers.get(body.get("key"))
@@ -106,6 +112,17 @@ class TermService:
                 return 409, {"error": "розмову закрито", "closed": True}
             name = self.terminals.start(sid, card.get("cwd") or "", cols, rows)
         return 200, {"key": self.viewers.open(sid, name, cols, rows).key}
+
+    def _new(self, body):
+        """Новий чат у теці, яку дошка вже знає. Id задаємо самі — так картка одразу пов'язана з терміналом."""
+        path = body.get("path")
+        if not size_ok(body.get("cols"), body.get("rows")):
+            return 400, {"error": "bad size"}
+        if not isinstance(path, str) or path not in {f["path"] for f in self.board.folders()}:
+            return 400, {"error": "невідома тека — додайте її в «Проєкти»"}
+        sid = str(uuid.uuid4())
+        self.terminals.start(sid, path, body["cols"], body["rows"], new=True)
+        return 200, {"id": sid}
 
     def _input(self, body):
         data = body.get("data")
@@ -181,4 +198,4 @@ class TermService:
             self.viewers.close(viewer)
 
 
-PATHS = {f"/api/term/{x}" for x in ("open", "input", "paste", "resize", "detach", "takeover", "stop")}
+PATHS = {f"/api/term/{x}" for x in ("new", "open", "input", "paste", "resize", "detach", "takeover", "stop")}

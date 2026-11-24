@@ -129,30 +129,10 @@ def window_for_pid(pid: int, run=subprocess.run) -> str | None:
     return None
 
 
-def _ancestors_named(pid: int, needle: str) -> bool:
-    seen = set()
-    while pid and pid > 1 and pid not in seen:
-        seen.add(pid)
-        try:
-            if needle in Path(f"/proc/{pid}/comm").read_text():
-                return True
-        except OSError:
-            return False
-        pid = _parent(pid)
-    return False
-
-
 def focus_live(card: dict, run=subprocess.run) -> str | None:
-    """Вивести на передній план вікно, у якому вже працює розмова. Повертає id вікна або None.
-    Розмови в Pragma запускає фоновий pragma-server без власного вікна — тоді фокусуємо вікно Pragma."""
+    """Вивести на передній план вікно, у якому вже працює розмова. Повертає id вікна або None."""
     pid = card.get("pid")
     window = window_for_pid(pid, run) if isinstance(pid, int) else None
-    if not window and isinstance(pid, int) and _ancestors_named(pid, "pragma"):
-        try:
-            listing = run(["wmctrl", "-lx"], capture_output=True, text=True, timeout=5).stdout
-            window = next((l.split()[0] for l in listing.splitlines() if len(l.split()) > 2 and l.split()[2] == "pragma.Pragma"), None)
-        except (OSError, subprocess.TimeoutExpired):
-            window = None
     if window:
         try:
             if run(["wmctrl", "-ia", window], capture_output=True, timeout=5).returncode == 0:

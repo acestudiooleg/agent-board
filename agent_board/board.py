@@ -301,6 +301,20 @@ class Board:
         return {"user": user,
                 "detected": [{"name": n, "path": p, "count": k, "icon": icons.get(n)} for (n, p), k in sorted(detected.items(), key=lambda x: -x[1])]}
 
+    def folders(self) -> list[dict]:
+        """Теки, де можна почати новий чат: ваші проєкти, корені знайдених і теки розмов (worktree), найсвіжіші першими."""
+        icons, user = self.store.project_icons(), self.store.projects()
+        found: dict[str, str] = {}
+        for c in self.snapshot()[1]:
+            for path in (c["project_root"], c["cwd"]):
+                # розмова могла перейти до іншого проєкту за файлами — тоді її тека старту не його
+                if path and path not in found and (path == c["project_root"] or self.resolver.resolve(path).name == c["project"]):
+                    found[path] = c["project"]
+        for path, name in user:
+            found[path] = name
+        return [{"path": p, "project": n, "icon": icons.get(n) or family_of(n, self.cfg.families)[1]}
+                for p, n in found.items() if p.startswith("/") and Path(p).is_dir()]
+
     def save_project(self, path: str, name: str, old_path: str | None = None) -> None:
         with self._lock:
             self.store.save_project(path, name, old_path)

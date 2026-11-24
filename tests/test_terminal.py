@@ -27,6 +27,9 @@ class PureTest(unittest.TestCase):
         self.assertEqual(env, {"PATH": "/bin"})
         self.assertEqual(claude_argv("a-1", "/my dir")[2], "CLAUDE_CONFIG_DIR='/my dir' claude --resume a-1" + KEEP_ERROR)
 
+    def test_new_chat_argv(self):
+        self.assertEqual(claude_argv("a-1", new=True)[2], "claude --session-id a-1" + KEEP_ERROR)
+
     def test_clean_text_drops_escape(self):
         self.assertEqual(clean_text("а\x1b[201~\r\nб\x03\t\x9bв"), "а[201~\nб\tв")
 

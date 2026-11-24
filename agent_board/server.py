@@ -111,6 +111,8 @@ def make_handler(board: Board, cfg: Config, launcher=subprocess.Popen, terminato
                 self._json(200, board_payload(board))
             elif path == "/api/projects":
                 self._json(200, board.projects_overview())
+            elif path == "/api/folders":
+                self._json(200, {"folders": board.folders()})
             elif path == "/api/events":
                 self._events()
             else:

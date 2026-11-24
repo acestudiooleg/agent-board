@@ -318,6 +318,7 @@ header h1{display:flex;align-items:center;gap:10px}
 .pj-list{display:flex;flex-direction:column;gap:6px;margin-top:6px}
 .pj-row{display:grid;grid-template-columns:1fr 1.6fr auto auto;gap:10px;align-items:center;padding:7px 10px;border-radius:10px;
   background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1)}
+.pj-row.new-row{grid-template-columns:auto 1fr auto}
 .pj-row .pj-path{color:var(--muted);font-family:"JetBrains Mono",monospace;font-size:12px;overflow-wrap:anywhere}
 .pj-row .pj-count{color:var(--teal);font-size:12px;white-space:nowrap}
 .pj-row button{font-size:12px;padding:3px 9px}
@@ -353,7 +354,7 @@ body.term-full.tab-term.panel-open main{margin-right:0}
 <body>
 <canvas id="stars" aria-hidden="true"></canvas><div class="planet" aria-hidden="true"></div><div class="moon" aria-hidden="true"></div><div class="planet2" aria-hidden="true"></div><div class="planet3" aria-hidden="true"></div>
 <div class="aurora" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></div>
-<header><h1><img id="board-icon" src="/icon" alt="" onerror="this.replaceWith(document.createTextNode('👥'))"><span id="board">Команда</span></h1><span id="stats"></span><button id="projects-btn" style="margin-left:auto" title="Ваші проєкти: назва й тека">🗂 Проєкти</button><span class="fz"><button data-act="font" data-k="board" data-d="-1" title="Дрібніший шрифт">A−</button><button data-act="font" data-k="board" data-d="1" title="Більший шрифт">A+</button></span><button id="theme" title="Перемкнути тему"></button><label><input type="checkbox" id="archive"> показати архів</label></header>
+<header><h1><img id="board-icon" src="/icon" alt="" onerror="this.replaceWith(document.createTextNode('👥'))"><span id="board">Команда</span></h1><span id="stats"></span><button class="primary" data-act="new" style="margin-left:auto" title="Почати нову розмову з Claude в теці проєкту">＋ Новий чат</button><button id="projects-btn" title="Ваші проєкти: назва й тека">🗂 Проєкти</button><span class="fz"><button data-act="font" data-k="board" data-d="-1" title="Дрібніший шрифт">A−</button><button data-act="font" data-k="board" data-d="1" title="Більший шрифт">A+</button></span><button id="theme" title="Перемкнути тему"></button><label><input type="checkbox" id="archive"> показати архів</label></header>
 <div id="filters"><input id="q" type="search" placeholder="Пошук карток…  ( / )" autocomplete="off"><div id="chips"></div></div>
 <main><div id="room"></div></main><aside id="panel"><div id="panel-actions"></div><div id="panel-tabs"></div><div id="panel-body"></div>
 <div id="term"><div id="term-view"><div id="term-screen"></div><div id="term-empty"></div></div>
@@ -553,7 +554,7 @@ function projectsHtml() {
   const e = S.pjEdit || {name: "", path: "", old: ""};
   const row = (p, user) => `<div class="pj-row"><b><button class="pj-icon" data-act="pj-icon" data-name="${esc(p.name)}" title="Змінити значок">${esc(p.icon || "＋")}</button> ${esc(p.name)}</b><span class="pj-path">${esc(p.path)}</span>
       <span class="pj-count">${p.count} розм.</span>
-      <span>${user ? `<button data-act="pj-edit" data-path="${esc(p.path)}" data-name="${esc(p.name)}">✎</button> <button data-act="pj-del" data-path="${esc(p.path)}" title="Видалити">✕</button>`
+      <span><button data-act="new" data-project="${esc(p.name)}" title="Новий чат у цьому проєкті">＋</button> ${user ? `<button data-act="pj-edit" data-path="${esc(p.path)}" data-name="${esc(p.name)}">✎</button> <button data-act="pj-del" data-path="${esc(p.path)}" title="Видалити">✕</button>`
                     : `<button data-act="pj-adopt" data-path="${esc(p.path)}" data-name="${esc(p.name)}" title="Перейменувати / змінити теку">✎</button>`}</span></div>
       ${S.iconFor === p.name ? `<div class="pj-icons">${ICONS.map(i => `<button data-act="pj-seticon" data-name="${esc(p.name)}" data-icon="${i}">${i}</button>`).join("")}
         <input id="pj-icon-own" maxlength="8" placeholder="свій" value="${esc(p.icon || "")}"><button data-act="pj-seticon-own" data-name="${esc(p.name)}">OK</button>
@@ -568,20 +569,55 @@ function projectsHtml() {
     <h2>Знайдені автоматично · ${P.detected.length}</h2>
     <div class="pj-list">${P.detected.map(p => row(p, false)).join("")}</div>`;
 }
+// Вибір теки для нового чату
+function newHtml() {
+  const list = (S.folders || []).filter(f => !S.newFor || f.project === S.newFor);
+  const groups = [...new Set(list.map(f => f.project))];
+  return `<div class="top"><b>＋ Новий чат${S.newFor ? " · " + esc(S.newFor) : ""}</b><span class="fz"><button data-act="close">✕</button></span></div>
+    ${groups.map(g => `<h2>${esc(g)}</h2><div class="pj-list">${list.filter(f => f.project === g).map(f =>
+      `<div class="pj-row new-row"><b>${esc(f.icon)}</b><span class="pj-path">${esc(f.path)}</span><button class="primary" data-act="new-start" data-path="${esc(f.path)}">Почати</button></div>`).join("")}</div>`).join("")
+      || `<p class="raw">Тек ще немає. Додайте проєкт у «🗂 Проєкти».</p>`}
+    ${S.newFor ? `<p><button data-act="new-all">Інші проєкти</button></p>` : `<div class="pj-hint">Потрібної теки немає? Додайте її в «🗂 Проєкти».</div>`}`;
+}
+async function newChat(project) {
+  try { S.folders = (await (await fetch("/api/folders")).json()).folders || []; }
+  catch (e) { return toast("Дошка не відповідає"); }
+  const own = project ? S.folders.filter(f => f.project === project) : [];
+  if (own.length === 1) return startChat(own[0]);
+  S.newFor = own.length ? project : null;
+  S.sel = null; S.view = "new"; history.replaceState(null, "", location.pathname); render();
+}
+async function startChat(f) {
+  if (!f || S.starting) return;
+  S.starting = true;
+  let r;
+  try { r = await post("/api/term/new", {path: f.path, cols: 100, rows: 34}); } catch (e) { r = {error: "дошка не відповідає"}; }
+  S.starting = false;
+  if (!r.id) return toast(r.error || "Не вдалося почати чат");
+  // Поки дошка не побачила розмову, показуємо тимчасову картку з тим самим id.
+  S.fresh = {id: r.id, fresh: true, term: true, name: "Новий чат", project: f.project, icon: f.icon, cwd: f.path};
+  S.view = null; S.sel = r.id; S.tab = "term";
+  try { sessionStorage.setItem("agent-board-tab", "term"); } catch (e) {}
+  history.replaceState(null, "", "#" + r.id); render();
+}
 async function loadProjects() { S.projects = await (await fetch("/api/projects")).json(); render(); }
 function renderPanel() {
-  const el = document.getElementById("panel"), c = S.cards.find(x => x.id === S.sel);
-  const open = !!c || S.view === "projects";
+  const el = document.getElementById("panel"), c = S.cards.find(x => x.id === S.sel) || (S.fresh?.id === S.sel ? S.fresh : null);
+  if (S.fresh && (S.sel !== S.fresh.id || (c && !c.fresh))) S.fresh = null;
+  const open = !!c || S.view === "projects" || S.view === "new";
   el.classList.toggle("open", open);
   document.body.classList.toggle("panel-open", open);
-  document.body.classList.toggle("tab-term", !!c && S.tab === "term");
-  if (window.Term) Term.show(c && S.tab === "term" ? c : null);
-  setHtml("panel-tabs", !c || !window.Term ? "" : `<button class="tab ${S.tab === "report" ? "on" : ""}" data-tab="report">Звіт</button>
+  document.body.classList.toggle("tab-term", !!c && (S.tab === "term" || c.fresh));
+  if (window.Term) Term.show(c && (S.tab === "term" || c.fresh) ? c : null);
+  setHtml("panel-tabs", !c || !window.Term ? "" : `<button class="tab ${S.tab === "report" ? "on" : ""}" data-tab="report" ${c.fresh ? "disabled" : ""}>Звіт</button>
     <button class="tab ${S.tab === "term" ? "on" : ""}" data-tab="term">⌨ Термінал${c.term ? " ●" : ""}</button>
+    <button data-act="new" data-project="${esc(c.project)}" title="Новий чат у проєкті «${esc(c.project)}»">＋</button>
     ${S.tab !== "term" ? "" : `<span class="ttl">${esc(c.project_icon || c.icon)} ${esc(c.name || c.project)}</span>
     <span class="fz"><button data-act="font" data-k="term" data-d="-1" title="Дрібніший шрифт">A−</button><button data-act="font" data-k="term" data-d="1" title="Більший шрифт">A+</button>
     <button data-t="full" title="На все вікно">⛶</button><button data-act="close">✕</button></span>`}`);
   if (!c && S.view === "projects") { setHtml("panel-actions", ""); return setHtml("panel-body", projectsHtml()); }
+  if (!c && S.view === "new") { setHtml("panel-actions", ""); return setHtml("panel-body", newHtml()); }
+  if (c?.fresh) { setHtml("panel-body", ""); return setHtml("panel-actions", ""); }
   if (!c) { setHtml("panel-body", ""); return setHtml("panel-actions", ""); }
   const s = c.summary || {};
   const done = (s.done || []).map(x => `<li>${mdInline(esc(x))}</li>`).join("");
@@ -664,7 +700,7 @@ async function projectAct(a, btn) {
   }
 }
 async function act(a, btn) {
-  if (S.view === "projects" && !S.sel) return projectAct(a, btn);
+  if (S.view && !S.sel) return projectAct(a, btn);
   const id = S.sel;
   if (!id) return;
   if (a === "close") { S.sel = null; history.replaceState(null, "", location.pathname); return render(); }
@@ -673,7 +709,7 @@ async function act(a, btn) {
     if (r.ok) return toast(r.method === "focus" ? "Перейшов до вікна з розмовою" : "Відкрив у Terminator");
     let copied = true;
     try { await navigator.clipboard.writeText(r.command); } catch (e) { copied = false; }
-    toast(r.error === "live" ? "Розмова вже відкрита в іншому терміналі" + (copied ? " · команда в буфері" : "")
+    toast(r.error === "live" ? "Розмова відкрита в іншому терміналі: її можна забрати у вкладці «Термінал»" + (copied ? " · команда в буфері" : "")
                              : "Не вдалося відкрити Terminator: " + (r.error || "") + (copied ? " · команда в буфері" : ""));
     return;
   }
@@ -699,6 +735,9 @@ document.addEventListener("click", e => {
   if (tab) { S.tab = tab.dataset.tab; try { sessionStorage.setItem("agent-board-tab", S.tab); } catch (e) {} return render(); }
   const button = e.target.closest("[data-act]");
   if (button?.dataset.act === "font") return setFont(button.dataset.k, +button.dataset.d);
+  if (button?.dataset.act === "new") return newChat(button.dataset.project || S.project);
+  if (button?.dataset.act === "new-all") { S.newFor = null; return render(); }
+  if (button?.dataset.act === "new-start") return startChat(S.folders.find(f => f.path === button.dataset.path));
   if (button) return act(button.dataset.act, button);
   const link = e.target.closest("#panel a[href^=http]");
   if (link) { e.preventDefault(); return openLink(link.href); }
@@ -725,7 +764,7 @@ document.addEventListener("keydown", e => {
 
 // Дошку оновили й перезапустили — оновлюємо сторінку, щойно ви нічого не друкуєте й не диктуєте.
 function maybeReload() {
-  if (S.stale && !["INPUT", "TEXTAREA", "SELECT"].includes(document.activeElement?.tagName) && (!window.Term || Term.idle())) location.reload();
+  if (S.stale && !S.fresh && !["INPUT", "TEXTAREA", "SELECT"].includes(document.activeElement?.tagName) && (!window.Term || Term.idle())) location.reload();
 }
 function apply(d) { S.stale = !!S.build && d.build !== S.build; S.build ??= d.build; maybeReload(); S.cards = d.cards; S.haiku = d.haiku; S.board = d.board || S.board; document.documentElement.classList.toggle("planet-mars", d.planet === "mars"); render();
   // Лічильники панелі «Проєкти» оновлюємо разом із дошкою, але не посеред введення у формі.

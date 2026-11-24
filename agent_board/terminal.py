@@ -30,9 +30,10 @@ KEEP_ERROR = ('; rc=$?; case $rc in 0|129|130|143) ;; *) '
               'printf "\\n[Claude завершився з кодом %s — Enter закриє термінал]\\n" "$rc"; read -r _;; esac')
 
 
-def claude_argv(sid: str, config_dir: str = "") -> list[str]:
+def claude_argv(sid: str, config_dir: str = "", new: bool = False) -> list[str]:
+    flag = "--session-id" if new else "--resume"
     env = f"CLAUDE_CONFIG_DIR={shlex.quote(config_dir)} " if config_dir else ""
-    return ["bash", "-lc", f"{env}claude --resume {shlex.quote(sid)}{KEEP_ERROR}"]
+    return ["bash", "-lc", f"{env}claude {flag} {shlex.quote(sid)}{KEEP_ERROR}"]
 
 
 def clean_text(text: str) -> str:
@@ -42,9 +43,10 @@ def clean_text(text: str) -> str:
 
 
 class Terminals:
-    def __init__(self, socket: str, config_dir: str = "", command=None):
+    def __init__(self, socket: str, config_dir: str = "", command=None, new_command=None):
         self.socket = socket
         self.command = command or (lambda sid: claude_argv(sid, config_dir))
+        self.new_command = new_command or command or (lambda sid: claude_argv(sid, config_dir, new=True))
         self.lock = threading.RLock()
 
     # ---------- tmux ----------
@@ -83,7 +85,7 @@ class Terminals:
         return None
 
     # ---------- дії ----------
-    def start(self, sid: str, cwd: str, cols: int = 120, rows: int = 36) -> str:
+    def start(self, sid: str, cwd: str, cols: int = 120, rows: int = 36, new: bool = False) -> str:
         if not SID_RE.fullmatch(sid):
             raise TerminalError("неприпустимий id розмови")
         if not cwd.startswith("/") or not Path(cwd).is_dir():
@@ -95,7 +97,8 @@ class Terminals:
                 return name
             if len(panes) >= MAX_TERMINALS:
                 raise TerminalError(f"уже відкрито {MAX_TERMINALS} терміналів — завершіть якийсь")
-            self.tmux("new-session", "-d", "-s", name, "-x", str(cols), "-y", str(rows), "-c", cwd, "--", *self.command(sid))
+            self.tmux("new-session", "-d", "-s", name, "-x", str(cols), "-y", str(rows), "-c", cwd, "--",
+                      *(self.new_command if new else self.command)(sid))
         return name
 
     def stop(self, name: str) -> None:

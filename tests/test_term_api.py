@@ -154,6 +154,26 @@ class TermApiTest(unittest.TestCase):
         self.assertIn("attach-session", conf)
         self.assertNotIn("--resume", conf)
 
+    def test_new_chat(self):
+        self.board.save_project(self.tmp.name, "Мій")
+        self.assertEqual([(f["path"], f["project"]) for f in self.board.folders()], [(self.tmp.name, "Мій")])
+        for bad in ("/", "/etc", "/nope/nope", None, 5, self.tmp.name + "/"):
+            self.assertEqual(self.post("/api/term/new", {"path": bad, "cols": 80, "rows": 24})[0], 400, bad)
+        self.assertEqual(self.post("/api/term/new", {"path": self.tmp.name, "cols": 0, "rows": 24})[0], 400)
+        self.assertEqual(self.terms.panes(), {})
+        used = []
+        self.terms.new_command = lambda sid: used.append(sid) or self.terms.command(sid)
+        status, data = self.post("/api/term/new", {"path": self.tmp.name, "cols": 80, "rows": 24})
+        self.assertEqual((status, used), (200, [data["id"]]))
+        self.assertIsNone(self.board.card(data["id"]))  # дошка ще не бачила — але під'єднатися вже можна
+        status, opened = self.open(start=False, sid=data["id"])
+        self.assertEqual(status, 200, opened)
+        self.until(self.stream(opened["key"]), "ГОТОВО")
+        self.board.scan()
+        self.assertTrue(self.board.card(data["id"])["term"])
+        self.assertEqual(self.post("/api/term/stop", {"id": data["id"]})[0], 200)
+        self.assertEqual(self.open(start=True, sid=data["id"])[0], 404)
+
     def test_stop(self):
         self.started()
         self.assertEqual(self.post("/api/term/stop", {"id": "aaa"})[0], 200)
