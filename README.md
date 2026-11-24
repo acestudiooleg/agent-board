@@ -8,16 +8,30 @@
 - **Дві дошки з одного коду:** особиста (`~/.claude`) і робоча (окремий акаунт з `CLAUDE_CONFIG_DIR`, Haiku вимкнено примусово).
 - **Перехід до розмови:** закрита — відкривається в Terminator на весь екран (ваш профіль, вкладки «назва картки» + «термінал»); жива — фокус вікна, де вона працює.
 - **Пошук** (`/`), чипи родин, панель звіту з Markdown, космічна тема зі склом.
-- Лише stdlib Python 3.13, без залежностей; HTTP + SSE лише на `127.0.0.1` з перевіркою `Host` / `Origin`.
+- Linux і macOS; лише stdlib Python 3.11+, без обов’язкових залежностей; HTTP + SSE лише на `127.0.0.1` з перевіркою `Host` / `Origin`.
 
 ## Запуск
 
-    cp config.example.toml config.toml            # і за потреби config.work.example.toml → config.work.toml
-    python3 -m agent_board                        # http://127.0.0.1:8091
-    ./run.sh config.toml                          # у фоні, лог у ~/.local/share/agent-board/
-    ./open.sh config.toml                         # окремим вікном-застосунком (Chrome --app)
+Потрібні Python 3.11+, `tmux` і Claude Code.
 
-Автозапуск: systemd user-service (`agent-board.service`, `agent-board-work.service`) або `run.sh` у `~/.config/autostart`.
+    cp config.example.toml config.toml     # і за потреби config.work.example.toml → config.work.toml
+    ./agent-board start                    # у фоні: http://127.0.0.1:8091, лог у ~/.local/share/agent-board/
+    ./agent-board open                     # запустити й відкрити
+    ./agent-board stop | restart | status  # розмови в терміналах переживають зупинку дошки
+
+Другий аргумент — інший конфіг: `./agent-board start config.work.toml`.
+
+### Linux
+
+`open` відкриває вікно-застосунок Chrome (`--app`), а вже відкрите виводить наперед (`wmctrl`). «Перейти» відкриває розмову в Terminator; якщо його немає, кнопку сховано й лишається термінал у картці. Автозапуск: systemd user-service (`agent-board.service`) або `run.sh` у `~/.config/autostart`.
+
+### macOS
+
+    brew install python tmux
+    ./agent-board autostart                # LaunchAgent: запуск при вході
+    ./agent-board open
+
+Щоб мати окреме вікно й значок у Dock: у Chrome «Встановити сторінку як застосунок». Кнопки «Перейти» немає: розмови відкриваються в картці. Диктування (необов’язково): `python3 -m pip install faster-whisper` у той Python, яким запускається дошка, і завантажена модель; мікрофон вмикає Ctrl+Shift+Пробіл.
 
 ## Конфіг
 
@@ -29,7 +43,8 @@
 
 ## Видалення
 
-    kill $(ss -ltnp | grep -oP ':(8091|8092) .*pid=\K[0-9]+')
+    ./agent-board stop                      # і для інших конфігів
+    tmux -L agent-board-8091 kill-server    # завершує розмови, відкриті в дошці
     rm -r ~/.local/share/agent-board ~/.config/terminator/agent-board.config
 
 ## Термінал у картці й диктування

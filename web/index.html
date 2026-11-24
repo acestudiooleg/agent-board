@@ -7,6 +7,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Команда</title>
 <link rel="icon" href="/icon">
+<link rel="manifest" href="/manifest.webmanifest">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Exo+2:wght@300;400;500;600&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
 <style>
@@ -347,6 +348,7 @@ body.term-full.tab-term.panel-open main{margin-right:0}
 #term-text:focus{border-color:var(--cyan)}
 #term-lang{font:inherit;font-size:13px;padding:5px 8px;border-radius:8px;border:1px solid var(--line-hi);background:#0c2036;color:var(--ink)}
 #term-mic.rec{background:rgba(255,70,110,.35);border-color:#ff5c8a;color:#fff}
+body.no-jump [data-act=jump]{display:none}
 body.no-mic #term-mic,body.no-mic #term-lang{display:none}
 #term-stop{display:none;margin-left:auto}
 #term.on #term-stop{display:inline-block}
@@ -769,7 +771,7 @@ document.addEventListener("keydown", e => {
 function maybeReload() {
   if (S.stale && !S.fresh && !["INPUT", "TEXTAREA", "SELECT"].includes(document.activeElement?.tagName) && (!window.Term || Term.idle())) location.reload();
 }
-function apply(d) { S.stale = !!S.build && d.build !== S.build; S.build ??= d.build; maybeReload(); S.dictation = !!d.dictation; document.body.classList.toggle("no-mic", !S.dictation); S.cards = d.cards; S.haiku = d.haiku; S.board = d.board || S.board; document.documentElement.classList.toggle("planet-mars", d.planet === "mars"); render();
+function apply(d) { S.stale = !!S.build && d.build !== S.build; S.build ??= d.build; maybeReload(); S.dictation = !!d.dictation; document.body.classList.toggle("no-mic", !S.dictation); document.body.classList.toggle("no-jump", d.jump === false); S.cards = d.cards; S.haiku = d.haiku; S.board = d.board || S.board; document.documentElement.classList.toggle("planet-mars", d.planet === "mars"); render();
   // Лічильники панелі «Проєкти» оновлюємо разом із дошкою, але не посеред введення у формі.
   if (S.view === "projects" && !document.activeElement?.matches("input")) loadProjects(); }
 fetch("/api/board").then(r => r.json()).then(apply);

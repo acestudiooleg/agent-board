@@ -6,6 +6,7 @@ window.Term = (() => {
   let ask = null;      // підтвердження: {kind: "take"|"stop", text, risky}
   let emptyHtml = null, sendChain = Promise.resolve(), pending = "", resizeTimer = 0;
   const drafts = {};
+  const MAC = /Mac/i.test(navigator.platform);  // Ctrl+V на Mac потрібен самому Claude (картинки), а вставлення — Cmd+V
 
   function build() {
     if (term) return;
@@ -21,7 +22,7 @@ window.Term = (() => {
     term.attachCustomKeyEventHandler(e => {
       if (e.type !== "keydown") return true;
       if (e.ctrlKey && e.code === "Space" && S.dictation) return false;        // мікрофон
-      if (e.ctrlKey && !e.altKey && e.code === "KeyV") return false;           // вставлення браузера
+      if (!MAC && e.ctrlKey && !e.altKey && e.code === "KeyV") return false;           // вставлення браузера
       if (e.ctrlKey && !e.altKey && e.code === "KeyC" && term.hasSelection()) { navigator.clipboard.writeText(term.getSelection()); term.clearSelection(); e.preventDefault(); return false; }
       return true;
     });
@@ -255,6 +256,7 @@ window.Term = (() => {
     if (S.dictation && e.ctrlKey && e.code === "Space" && document.body.classList.contains("tab-term")) { e.preventDefault(); mic(); }
   });
   document.addEventListener("themechange", () => { if (term) { term.options.theme = Themes.term(); term.options.minimumContrastRatio = Themes.termContrast(); } });
+  if (MAC) $("term-mic").title = "Ctrl+Shift+Пробіл — почати й закінчити";  // Ctrl+Пробіл на Mac перемикає мову вводу
   document.addEventListener("fontchange", () => { grow(); if (term) { term.options.fontSize = fontSize(); doFit(); } });
   window.addEventListener("pagehide", detach);
   // Чи можна оновити сторінку, нічого не загубивши: немає запису й ненадісланого тексту.

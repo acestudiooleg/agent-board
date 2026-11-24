@@ -11,12 +11,14 @@ import time
 import unittest
 from http.server import ThreadingHTTPServer
 from pathlib import Path
+from unittest import mock
 
+from agent_board import system
 from agent_board.board import Board
 from agent_board.config import Config
 from agent_board.server import make_handler
 from agent_board.store import Store
-from agent_board.takeover import proc_start
+from agent_board.system import proc_start
 from agent_board.term_api import TermService
 from agent_board.terminal import Terminals
 from tests.helpers import assistant, human, write_lines
@@ -49,7 +51,7 @@ class TermApiTest(unittest.TestCase):
             write_lines(self.root / f"claude/projects/-p/{sid}.jsonl", [human("привіт", cwd=cwd), assistant("вітаю")])
         cfg = Config(claude_dir=self.root / "claude", db_path=self.root / "b.db", home=self.root, summary_enabled=False)
         self.board = Board(cfg, Store(cfg.db_path))
-        self.terms = Terminals(f"ab-test-{os.getpid()}-{self._testMethodName[-12:]}",
+        self.terms = Terminals(f"ab-test-{os.getpid()}-{type(self).__name__[7:10]}{self._testMethodName[-12:]}",
                                command=lambda sid: ["bash", "-c", FAKE % (sid, self.root, self.root)])
         self.service = TermService(self.board, self.terms, FakeDictation())
         self.board.scan()
@@ -257,6 +259,16 @@ class TermApiTest(unittest.TestCase):
             r.read()
             self.assertEqual(r.status, want, path)
         conn.close()
+
+
+class TermApiMacProcessesTest(TermApiTest):
+    """Те саме, але процеси читає ps, як на macOS."""
+
+    def setUp(self):
+        patcher = mock.patch.object(system, "procs", system.Ps())
+        patcher.start()
+        self.addCleanup(patcher.stop)
+        super().setUp()
 
 
 if __name__ == "__main__":

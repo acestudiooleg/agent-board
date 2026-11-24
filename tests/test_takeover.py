@@ -5,7 +5,8 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from agent_board.takeover import NeedsConfirm, Takeover, proc_start
+from agent_board.system import proc_start
+from agent_board.takeover import NeedsConfirm, Takeover
 from agent_board.terminal import TerminalError
 
 

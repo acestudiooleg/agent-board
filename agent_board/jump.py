@@ -4,6 +4,8 @@ import shlex
 import subprocess
 from pathlib import Path
 
+from . import system
+
 TERMINATOR_CONFIG = Path.home() / ".config/terminator/agent-board.config"
 USER_TERMINATOR_CONFIG = Path.home() / ".config/terminator/config"  # лише читаємо
 USER_PROFILE = "Molokai"  # ваш профіль з напівпрозорим «скляним» фоном
@@ -100,15 +102,6 @@ def terminator_config_from_user(title: str, command: str, cwd: str, source: Path
     return "\n".join(lines) + "\n"
 
 
-def _parent(pid: int) -> int | None:
-    try:
-        stat = Path(f"/proc/{pid}/stat").read_text()
-    except OSError:
-        return None
-    # поле 4 після «(назва)», назва може містити пробіли й дужки
-    return int(stat.rsplit(")", 1)[1].split()[1])
-
-
 def window_for_pid(pid: int, run=subprocess.run) -> str | None:
     """Вікно X, якому належить процес або найближчий його предок (claude → шел → Terminator)."""
     try:
@@ -125,7 +118,7 @@ def window_for_pid(pid: int, run=subprocess.run) -> str | None:
         if pid in by_pid:
             return by_pid[pid]
         seen.add(pid)
-        pid = _parent(pid)
+        pid = system.parent(pid)
     return None
 
 

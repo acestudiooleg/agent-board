@@ -6,7 +6,8 @@ import threading
 import time
 from pathlib import Path
 
-from .jump import clean_env, _parent
+from . import system
+from .jump import clean_env
 
 CONF = Path(__file__).with_name("tmux.conf")
 PREFIX = "ab-"
@@ -33,7 +34,7 @@ KEEP_ERROR = ('; rc=$?; case $rc in 0|129|130|143) ;; *) '
 def claude_argv(sid: str, config_dir: str = "", new: bool = False) -> list[str]:
     flag = "--session-id" if new else "--resume"
     env = f"CLAUDE_CONFIG_DIR={shlex.quote(config_dir)} " if config_dir else ""
-    return ["bash", "-lc", f"{env}claude {flag} {shlex.quote(sid)}{KEEP_ERROR}"]
+    return system.shell_argv(f"{env}claude {flag} {shlex.quote(sid)}{KEEP_ERROR}")
 
 
 def clean_text(text: str) -> str:
@@ -81,7 +82,7 @@ class Terminals:
             if pid in by_pid:
                 return by_pid[pid]
             seen.add(pid)
-            pid = _parent(pid)
+            pid = system.parent(pid)
         return None
 
     # ---------- дії ----------

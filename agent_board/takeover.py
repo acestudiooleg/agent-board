@@ -7,6 +7,7 @@ import time
 from pathlib import Path
 
 from .live import LiveSession, read_live
+from .system import proc_start, same_start
 from .terminal import TerminalError, Terminals
 
 log = logging.getLogger("agent_board")
@@ -15,15 +16,6 @@ EXIT_SECONDS = 10
 
 class NeedsConfirm(TerminalError):
     """Щось загубиться: питання агента або фонова команда."""
-
-
-def proc_start(pid: int) -> str | None:
-    """Час старту процесу; None — процесу немає або він уже завершився (зомбі)."""
-    try:
-        fields = Path(f"/proc/{pid}/stat").read_text().rsplit(")", 1)[1].split()
-    except (OSError, IndexError):
-        return None
-    return None if fields[0] in "ZX" else fields[19]
 
 
 class Takeover:
@@ -45,7 +37,7 @@ class Takeover:
             raise TerminalError("розмова вже працює в дошці")
         if lv.kind != "interactive":
             raise TerminalError("фонову розмову (claude --bg) забрати не можна")
-        if not lv.proc_start or proc_start(lv.pid) != lv.proc_start:
+        if not same_start(proc_start(lv.pid), lv.proc_start):
             raise TerminalError("не вдалося впевнитися, що це саме процес цієї розмови")
         return lv
 
@@ -97,7 +89,7 @@ class Takeover:
         except PermissionError:
             raise TerminalError("немає прав завершити цей процес") from None
         deadline = time.monotonic() + self.exit_seconds
-        while proc_start(lv.pid) == lv.proc_start:
+        while same_start(proc_start(lv.pid), lv.proc_start):
             if time.monotonic() > deadline:
                 raise TerminalError("Claude не завершився за 10 с — закрийте його там вручну")
             time.sleep(0.1)

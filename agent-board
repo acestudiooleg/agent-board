@@ -1,0 +1,9 @@
+#!/bin/sh
+# Запуск дошки на Linux і Mac: ./agent-board start | stop | restart | status | open | autostart  [config.toml]
+set -eu
+cd "$(dirname "$0")"
+for py in python3 python3.14 python3.13 python3.12 python3.11 /opt/homebrew/bin/python3 /usr/local/bin/python3; do
+  if command -v "$py" >/dev/null 2>&1 && "$py" -c 'import sys; sys.exit(sys.version_info < (3, 11))' 2>/dev/null; then exec "$py" -m agent_board.cli "$@"; fi
+done
+echo "Потрібен Python 3.11 або новіший (на Mac: brew install python)." >&2
+exit 1

@@ -9,6 +9,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, urlsplit
 
+from . import system
 from .board import Board
 from .config import Config, load_config
 from .dictation import MAX_PCM, Dictation
@@ -33,12 +34,12 @@ PING_SECONDS = 5  # закрита вкладка звільняє SSE-слот 
 
 def board_payload(board: Board) -> dict:
     version, cards = board.snapshot()
-    return {"version": version, "build": BUILD, "dictation": bool(board.term and board.term.dictation.available), "board": board.cfg.board_name, "planet": board.cfg.planet, "cards": cards,
+    return {"version": version, "build": BUILD, "jump": system.can_open_window(), "dictation": bool(board.term and board.term.dictation.available), "board": board.cfg.board_name, "planet": board.cfg.planet, "cards": cards,
             "haiku": board.summary_status()}
 
 
 def is_web_url(url) -> bool:
-    """Лише http(s) із хостом, без пробілів і керівних символів: іде аргументом у xdg-open."""
+    """Лише http(s) із хостом, без пробілів і керівних символів: іде аргументом у xdg-open / open."""
     if not isinstance(url, str) or len(url) > 4096 or any(ch.isspace() or not ch.isprintable() for ch in url):
         return False
     try:
@@ -46,6 +47,16 @@ def is_web_url(url) -> bool:
         return parts.scheme in ("http", "https") and bool(parts.hostname)
     except ValueError:
         return False
+
+
+def manifest(cfg: Config) -> dict:
+    """Для «Встановити застосунок» у Chrome та Edge: власне вікно й значок без Electron."""
+    out = {"name": cfg.board_name, "short_name": cfg.board_name, "id": "/", "start_url": "/", "display": "standalone",
+           "background_color": "#050c1c", "theme_color": "#050c1c"}
+    ctype = ICON_TYPES.get(cfg.icon.suffix.lower()) if cfg.icon else None
+    if ctype:
+        out["icons"] = [{"src": "/icon", "type": ctype, "sizes": "any" if ctype.endswith("svg+xml") else "512x512"}]
+    return out
 
 
 def make_handler(board: Board, cfg: Config, launcher=subprocess.Popen, terminator_config: Path = TERMINATOR_CONFIG,
@@ -101,6 +112,8 @@ def make_handler(board: Board, cfg: Config, launcher=subprocess.Popen, terminato
             path = urlsplit(self.path).path
             if path == "/":
                 self._send(200, WEB.read_bytes(), "text/html; charset=utf-8")
+            elif path == "/manifest.webmanifest":
+                self._send(200, json.dumps(manifest(cfg), ensure_ascii=False).encode(), "application/manifest+json; charset=utf-8")
             elif path in STATIC:
                 self._send(200, (WEB.parent / path[1:]).read_bytes(), STATIC[path] + "; charset=utf-8")
             elif path == "/api/term/stream":
@@ -228,7 +241,7 @@ def make_handler(board: Board, cfg: Config, launcher=subprocess.Popen, terminato
             if not is_web_url(url):
                 return self._json(400, {"error": "bad url"})
             try:
-                launcher(["xdg-open", url], stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                launcher(system.open_url_argv(url), stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
                          start_new_session=True, env=clean_env())
             except OSError as exc:
                 return self._json(500, {"error": str(exc)})
@@ -290,12 +303,25 @@ def build(cfg: Config) -> tuple[Board, ThreadingHTTPServer]:
     return board, httpd
 
 
+def pid_file(cfg_path: Path) -> Path:
+    return Path.home() / ".local/share/agent-board" / f"{cfg_path.stem}.pid"
+
+
+def write_pid(cfg_path: Path) -> None:
+    """Для `agent-board stop`: PID разом із часом старту, щоб не зупинити чужий процес."""
+    path = pid_file(cfg_path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps({"pid": os.getpid(), "start": system.proc_start(os.getpid())}))
+
+
 def main(argv: list[str] | None = None) -> None:
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
+    system.prepare_environ()
     cfg_path = Path(argv[0]) if argv else Path(os.environ.get("AGENT_BOARD_CONFIG") or ROOT / "config.toml")
     cfg = load_config(cfg_path)
     board, httpd = build(cfg)
     threading.Thread(target=scan_loop, args=(board, cfg.poll_seconds, board.term), daemon=True).start()
     log.info("agent-board «%s» on http://%s:%s (claude_dir=%s, haiku=%s)", cfg.board_name, cfg.host, cfg.port,
              cfg.claude_dir, "on" if cfg.summary_enabled else "off")
+    write_pid(cfg_path)
     httpd.serve_forever()
