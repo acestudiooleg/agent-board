@@ -6,7 +6,9 @@ import subprocess
 import sys
 import threading
 import time
+from pathlib import Path
 
+ROOT = Path(__file__).resolve().parent.parent  # звідси знаходиться agent_board.dictate_worker
 LANGS = ("auto", "uk", "ru", "en")
 MAX_PCM = 4_000_000  # 2 хв 16 кГц s16le
 LOAD_SECONDS, WORK_SECONDS = 60, 180
@@ -56,7 +58,7 @@ class Dictation:
         self._stop()
         try:
             self.proc = subprocess.Popen(self.command, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
-                                         start_new_session=True, env={**os.environ, "HF_HUB_OFFLINE": "1"})
+                                         start_new_session=True, cwd=ROOT, env={**os.environ, "HF_HUB_OFFLINE": "1"})
         except OSError as exc:
             raise DictationError(f"Whisper не запустився: {exc}") from None
         answer = self._read(self.load_seconds)

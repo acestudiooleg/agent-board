@@ -31,3 +31,12 @@
 
     kill $(ss -ltnp | grep -oP ':(8091|8092) .*pid=\K[0-9]+')
     rm -r ~/.local/share/agent-board ~/.config/terminator/agent-board.config
+
+## Термінал у картці й диктування
+
+Вкладка «Термінал» у панелі картки — справжній Claude Code. Він працює в окремому сервері tmux (`tmux -L agent-board-<порт>`), тому закрита картка чи перезапуск дошки його не зупиняють.
+
+- **Продовжити тут** — закрита розмова (`claude --resume`). **Забрати в дошку** — розмова, відкрита в іншому терміналі: Claude там отримує SIGTERM, і розмова продовжується тут.
+- Поле під терміналом: Enter — надіслати, Shift+Enter — новий рядок. Поки Claude показує меню, текст не надсилається.
+- **🎤** або Ctrl+Пробіл — диктування через локальний faster-whisper; звук не пишеться на диск і не виходить у мережу. Модель має бути в кеші Hugging Face. У конфігу: `dictation_model` (типово `small`), `dictation_threads`, `dictation_languages`.
+- Потрібні `tmux` і, для диктування, `pip install faster-whisper`. xterm.js (MIT) лежить у `web/vendor`.

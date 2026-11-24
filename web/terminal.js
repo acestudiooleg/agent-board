@@ -255,7 +255,7 @@ window.Term = (() => {
   document.addEventListener("keydown", e => {
     if (e.ctrlKey && e.code === "Space" && document.body.classList.contains("tab-term")) { e.preventDefault(); mic(); }
   });
-  document.addEventListener("fontchange", () => { if (term) { term.options.fontSize = fontSize(); doFit(); } });
+  document.addEventListener("fontchange", () => { grow(); if (term) { term.options.fontSize = fontSize(); doFit(); } });
   window.addEventListener("pagehide", detach);
   return {show};
 })();

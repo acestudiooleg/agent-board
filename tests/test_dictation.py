@@ -1,3 +1,4 @@
+import os
 import sys
 import textwrap
 import time
@@ -54,6 +55,13 @@ class DictationTest(unittest.TestCase):
             d.transcribe(b"ab", "uk")
         with self.assertRaises(DictationError):
             Dictation("m", 1, ["uk"], command=["/nope/nope"]).transcribe(b"ab", "uk")
+
+    def test_worker_is_found_from_any_directory(self):
+        d = self.make("import os; import agent_board.dictate_worker; print('{\"ready\": true}', flush=True); input(); print('{\"text\": \"ok\"}', flush=True)")
+        old = os.getcwd()
+        self.addCleanup(os.chdir, old)
+        os.chdir("/")
+        self.assertEqual(d.transcribe(b"ab", "uk")["text"], "ok")
 
     def test_idle_stops_process(self):
         d = self.make(idle_seconds=0.2)
