@@ -363,7 +363,8 @@ body.term-full.tab-term.panel-open main{margin-right:0}
       <button class="primary" data-t="send">Надіслати</button><button id="term-stop" data-t="stop" title="Завершити Claude в цій картці">⏹ Завершити</button></div></div></div></aside>
 <div id="toast"></div>
 <script>
-const S = {tab: "report", cards: [], project: null, q: "", view: location.hash === "#projects" ? "projects" : null, projects: null, pjEdit: null,
+function sessionTab() { try { return sessionStorage.getItem("agent-board-tab") || "report"; } catch (e) { return "report"; } }
+const S = {tab: sessionTab(), build: null, cards: [], project: null, q: "", view: location.hash === "#projects" ? "projects" : null, projects: null, pjEdit: null,
   sel: location.hash === "#projects" ? null : decodeURIComponent(location.hash.slice(1)) || null, haiku: {}, html: {}, board: "Команда"};
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"}[c]));
 // Короткі уривки на картках — без Markdown-розмітки
@@ -695,7 +696,7 @@ document.addEventListener("click", e => {
   const chip = e.target.closest(".chip");
   if (chip?.dataset.p !== undefined) { S.project = chip.dataset.p || null; return render(); }
   const tab = e.target.closest("[data-tab]");
-  if (tab) { S.tab = tab.dataset.tab; return render(); }
+  if (tab) { S.tab = tab.dataset.tab; try { sessionStorage.setItem("agent-board-tab", S.tab); } catch (e) {} return render(); }
   const button = e.target.closest("[data-act]");
   if (button?.dataset.act === "font") return setFont(button.dataset.k, +button.dataset.d);
   if (button) return act(button.dataset.act, button);
@@ -722,7 +723,11 @@ document.addEventListener("keydown", e => {
   else if (e.key === "Escape" && document.activeElement === q) { q.value = ""; S.q = ""; q.blur(); render(); }
 });
 
-function apply(d) { S.cards = d.cards; S.haiku = d.haiku; S.board = d.board || S.board; document.documentElement.classList.toggle("planet-mars", d.planet === "mars"); render();
+// Дошку оновили й перезапустили — оновлюємо сторінку, щойно ви нічого не друкуєте й не диктуєте.
+function maybeReload() {
+  if (S.stale && !["INPUT", "TEXTAREA", "SELECT"].includes(document.activeElement?.tagName) && (!window.Term || Term.idle())) location.reload();
+}
+function apply(d) { S.stale = !!S.build && d.build !== S.build; S.build ??= d.build; maybeReload(); S.cards = d.cards; S.haiku = d.haiku; S.board = d.board || S.board; document.documentElement.classList.toggle("planet-mars", d.planet === "mars"); render();
   // Лічильники панелі «Проєкти» оновлюємо разом із дошкою, але не посеред введення у формі.
   if (S.view === "projects" && !document.activeElement?.matches("input")) loadProjects(); }
 fetch("/api/board").then(r => r.json()).then(apply);
@@ -735,6 +740,7 @@ function connect() {
 }
 connect();
 setInterval(render, 60000);
+setInterval(maybeReload, 5000);
 
 // Зоряне небо: три шари глибини з паралаксом, мерехтіння, рідкісні падучі зірки.
 (function starfield() {

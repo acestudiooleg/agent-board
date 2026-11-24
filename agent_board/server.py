@@ -1,3 +1,4 @@
+import hashlib
 import json
 import logging
 import os
@@ -23,6 +24,8 @@ log = logging.getLogger("agent_board")
 STATIC = {f"/{n}": t for n, t in (
     ("terminal.js", "text/javascript"), ("vendor/xterm.js", "text/javascript"), ("vendor/addon-fit.js", "text/javascript"),
     ("vendor/addon-web-links.js", "text/javascript"), ("vendor/xterm.css", "text/css"))}
+# Версія сторінки: відкриті вікна застосунку бачать, що після перезапуску дошки вона інша, і оновлюються самі.
+BUILD = hashlib.sha256(b"".join(p.read_bytes() for p in [WEB, *(WEB.parent / n[1:] for n in STATIC)])).hexdigest()[:12]
 MAX_BODY = 256 * 1024
 MAX_SSE = 8
 PING_SECONDS = 5  # закрита вкладка звільняє SSE-слот не пізніше ніж за стільки секунд
@@ -30,7 +33,7 @@ PING_SECONDS = 5  # закрита вкладка звільняє SSE-слот 
 
 def board_payload(board: Board) -> dict:
     version, cards = board.snapshot()
-    return {"version": version, "board": board.cfg.board_name, "planet": board.cfg.planet, "cards": cards,
+    return {"version": version, "build": BUILD, "board": board.cfg.board_name, "planet": board.cfg.planet, "cards": cards,
             "haiku": board.summary_status()}
 
 

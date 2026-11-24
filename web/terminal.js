@@ -257,6 +257,8 @@ window.Term = (() => {
   });
   document.addEventListener("fontchange", () => { grow(); if (term) { term.options.fontSize = fontSize(); doFit(); } });
   window.addEventListener("pagehide", detach);
-  return {show};
+  // Чи можна оновити сторінку, нічого не загубивши: немає запису й ненадісланого тексту.
+  const idle = () => !rec && !recBusy && !opening && !ask && !$("term-text").value && !Object.values(drafts).some(Boolean);
+  return {show, idle};
 })();
 render();

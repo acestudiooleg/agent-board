@@ -56,6 +56,7 @@ class ServerTest(unittest.TestCase):
         self.assertFalse(data["haiku"]["enabled"])
         self.assertEqual(data["board"], "Свої")
         self.assertEqual(data["planet"], "ringed")
+        self.assertRegex(data["build"], r"^[0-9a-f]{12}$")
 
     def test_mark_and_validation(self):
         self.assertEqual(self.req("POST", "/api/mark", {"id": "aaa", "kind": "done"})[0], 200)
