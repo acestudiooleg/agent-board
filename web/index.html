@@ -1,6 +1,7 @@
 <!doctype html>
 <html lang="uk">
 <head>
+<link rel="stylesheet" href="/vendor/xterm.css">
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Команда</title>
@@ -322,6 +323,30 @@ header h1{display:flex;align-items:center;gap:10px}
 .pj-row button{font-size:12px;padding:3px 9px}
 .pj-hint{color:var(--muted);font-size:12px;margin-top:4px}
 @media (max-width:700px){.pj-form,.pj-row{grid-template-columns:1fr}}
+/* Термінал у панелі */
+#panel-tabs{display:flex;gap:8px;align-items:center;padding:8px 24px;border-bottom:1px solid var(--line)}
+#panel-tabs:empty{display:none}
+#panel-tabs .tab.on{background:rgba(67,230,255,.2);border-color:var(--cyan);color:#fff}
+#panel-tabs .ttl{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--cyan);font-weight:600}
+#term{display:none;flex:1;min-height:0;flex-direction:column}
+body.tab-term #term{display:flex}
+body.tab-term #panel-body{display:none}
+body.term-full.tab-term{--panel-w:100vw}
+body.term-full.tab-term.panel-open main{margin-right:0}
+#term-view{position:relative;flex:1;min-height:0;background:#0b1524}
+#term-screen{position:absolute;inset:8px 4px 4px 10px;visibility:hidden}
+#term.on #term-screen{visibility:visible}
+#term-empty{position:absolute;inset:0;display:flex;flex-direction:column;gap:14px;align-items:center;justify-content:center;text-align:center;padding:24px;background:rgba(11,21,36,.92)}
+#term-empty:empty{display:none}
+#term-empty p{margin:0;max-width:520px}
+#term-bar{padding:10px 14px 12px;border-top:1px solid var(--line);display:flex;flex-direction:column;gap:8px}
+#term-bar > div{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+#term-text{font:inherit;font-size:calc(14px*var(--fz-term,1));line-height:1.45;resize:none;width:100%;box-sizing:border-box;padding:8px 12px;border-radius:10px;border:1px solid var(--line-hi);background:rgba(8,20,40,.75);color:var(--ink);outline:none}
+#term-text:focus{border-color:var(--cyan)}
+#term-lang{font:inherit;font-size:13px;padding:5px 8px;border-radius:8px;border:1px solid var(--line-hi);background:#0c2036;color:var(--ink)}
+#term-mic.rec{background:rgba(255,70,110,.35);border-color:#ff5c8a;color:#fff}
+#term-stop{display:none;margin-left:auto}
+#term.on #term-stop{display:inline-block}
 </style>
 <script>try { if (localStorage.getItem("agent-board-theme") === "deep") document.documentElement.classList.add("theme-deep"); } catch (e) {}</script>
 </head>
@@ -330,10 +355,15 @@ header h1{display:flex;align-items:center;gap:10px}
 <div class="aurora" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></div>
 <header><h1><img id="board-icon" src="/icon" alt="" onerror="this.replaceWith(document.createTextNode('👥'))"><span id="board">Команда</span></h1><span id="stats"></span><button id="projects-btn" style="margin-left:auto" title="Ваші проєкти: назва й тека">🗂 Проєкти</button><span class="fz"><button data-act="font" data-k="board" data-d="-1" title="Дрібніший шрифт">A−</button><button data-act="font" data-k="board" data-d="1" title="Більший шрифт">A+</button></span><button id="theme" title="Перемкнути тему"></button><label><input type="checkbox" id="archive"> показати архів</label></header>
 <div id="filters"><input id="q" type="search" placeholder="Пошук карток…  ( / )" autocomplete="off"><div id="chips"></div></div>
-<main><div id="room"></div></main><aside id="panel"><div id="panel-actions"></div><div id="panel-body"></div></aside>
+<main><div id="room"></div></main><aside id="panel"><div id="panel-actions"></div><div id="panel-tabs"></div><div id="panel-body"></div>
+<div id="term"><div id="term-view"><div id="term-screen"></div><div id="term-empty"></div></div>
+  <div id="term-bar"><textarea id="term-text" rows="1" placeholder="Повідомлення для Claude…  Enter — надіслати, Shift+Enter — новий рядок"></textarea>
+    <div><button id="term-mic" data-t="mic" title="Ctrl+Пробіл — почати й закінчити">🎤 Диктувати</button>
+      <select id="term-lang" title="Мова диктування"><option value="auto">авто</option><option value="uk">українська</option><option value="ru">російська</option></select>
+      <button class="primary" data-t="send">Надіслати</button><button id="term-stop" data-t="stop" title="Завершити Claude в цій картці">⏹ Завершити</button></div></div></div></aside>
 <div id="toast"></div>
 <script>
-const S = {cards: [], project: null, q: "", view: location.hash === "#projects" ? "projects" : null, projects: null, pjEdit: null,
+const S = {tab: "report", cards: [], project: null, q: "", view: location.hash === "#projects" ? "projects" : null, projects: null, pjEdit: null,
   sel: location.hash === "#projects" ? null : decodeURIComponent(location.hash.slice(1)) || null, haiku: {}, html: {}, board: "Команда"};
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"}[c]));
 // Короткі уривки на картках — без Markdown-розмітки
@@ -543,6 +573,13 @@ function renderPanel() {
   const open = !!c || S.view === "projects";
   el.classList.toggle("open", open);
   document.body.classList.toggle("panel-open", open);
+  document.body.classList.toggle("tab-term", !!c && S.tab === "term");
+  if (window.Term) Term.show(c && S.tab === "term" ? c : null);
+  setHtml("panel-tabs", !c || !window.Term ? "" : `<button class="tab ${S.tab === "report" ? "on" : ""}" data-tab="report">Звіт</button>
+    <button class="tab ${S.tab === "term" ? "on" : ""}" data-tab="term">⌨ Термінал${c.term ? " ●" : ""}</button>
+    ${S.tab !== "term" ? "" : `<span class="ttl">${esc(c.project_icon || c.icon)} ${esc(c.name || c.project)}</span>
+    <span class="fz"><button data-act="font" data-k="term" data-d="-1" title="Дрібніший шрифт">A−</button><button data-act="font" data-k="term" data-d="1" title="Більший шрифт">A+</button>
+    <button data-t="full" title="На все вікно">⛶</button><button data-act="close">✕</button></span>`}`);
   if (!c && S.view === "projects") { setHtml("panel-actions", ""); return setHtml("panel-body", projectsHtml()); }
   if (!c) { setHtml("panel-body", ""); return setHtml("panel-actions", ""); }
   const s = c.summary || {};
@@ -584,12 +621,13 @@ async function openLink(url) {
   window.open(url, "_blank", "noopener");
 }
 // Розмір шрифту: окремо картки (board) і панель (panel); пам'ятає браузер.
-const FONTS = {board: "--fz-board", panel: "--fz-panel"}, font = {board: 100, panel: 100};
+const FONTS = {board: "--fz-board", panel: "--fz-panel", term: "--fz-term"}, font = {board: 100, panel: 100, term: 100};
 function setFont(k, d) {
   font[k] = Math.min(200, Math.max(70, font[k] + d * 10));
   document.documentElement.style.setProperty(FONTS[k], font[k] / 100);
   try { localStorage.setItem("agent-board-font-" + k, font[k]); } catch (e) {}
-  if (d) toast("Шрифт " + (k === "panel" ? "панелі" : "карток") + ": " + font[k] + "%");
+  document.dispatchEvent(new Event("fontchange"));
+  if (d) toast("Шрифт " + ({panel: "панелі", term: "термінала"}[k] || "карток") + ": " + font[k] + "%");
 }
 for (const k of Object.keys(FONTS)) {
   try { font[k] = +localStorage.getItem("agent-board-font-" + k) || 100; } catch (e) {}
@@ -656,12 +694,14 @@ async function act(a, btn) {
 document.addEventListener("click", e => {
   const chip = e.target.closest(".chip");
   if (chip?.dataset.p !== undefined) { S.project = chip.dataset.p || null; return render(); }
+  const tab = e.target.closest("[data-tab]");
+  if (tab) { S.tab = tab.dataset.tab; return render(); }
   const button = e.target.closest("[data-act]");
   if (button?.dataset.act === "font") return setFont(button.dataset.k, +button.dataset.d);
   if (button) return act(button.dataset.act, button);
   const link = e.target.closest("#panel a[href^=http]");
   if (link) { e.preventDefault(); return openLink(link.href); }
-  if (e.target.closest("input")) return;
+  if (e.target.closest("input, textarea")) return;
   const card = e.target.closest(".card");
   if (card) { S.view = null; S.sel = card.dataset.id; history.replaceState(null, "", "#" + encodeURIComponent(S.sel)); render(); return; }
   // Клік по порожньому місцю поза панеллю (фон між картками) закриває панель.
@@ -678,7 +718,7 @@ document.getElementById("projects-btn").addEventListener("click", () => {
 });
 document.addEventListener("keydown", e => {
   const q = document.getElementById("q");
-  if (e.key === "/" && document.activeElement.tagName !== "INPUT") { e.preventDefault(); q.focus(); }
+  if (e.key === "/" && !["INPUT", "TEXTAREA", "SELECT"].includes(document.activeElement.tagName)) { e.preventDefault(); q.focus(); }
   else if (e.key === "Escape" && document.activeElement === q) { q.value = ""; S.q = ""; q.blur(); render(); }
 });
 
@@ -785,5 +825,6 @@ setInterval(render, 60000);
 
 
 </script>
+<script src="/vendor/xterm.js"></script><script src="/vendor/addon-fit.js"></script><script src="/vendor/addon-web-links.js"></script><script src="/terminal.js"></script>
 </body>
 </html>
