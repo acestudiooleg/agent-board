@@ -6,17 +6,24 @@ import threading
 import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
-from urllib.parse import urlsplit
+from urllib.parse import parse_qs, urlsplit
 
 from .board import Board
 from .config import Config, load_config
+from .dictation import MAX_PCM, Dictation
 from .jump import TERMINATOR_CONFIG, clean_env, open_in_terminator
 from .store import Store
+from .term_api import TermService
+from .terminal import Terminals
 
 ROOT = Path(__file__).resolve().parent.parent
 WEB = ROOT / "web" / "index.html"
 ICON_TYPES = {".svg": "image/svg+xml", ".png": "image/png"}
 log = logging.getLogger("agent_board")
+STATIC = {f"/{n}": t for n, t in (
+    ("terminal.js", "text/javascript"), ("vendor/xterm.js", "text/javascript"), ("vendor/addon-fit.js", "text/javascript"),
+    ("vendor/addon-web-links.js", "text/javascript"), ("vendor/xterm.css", "text/css"))}
+MAX_BODY = 256 * 1024
 MAX_SSE = 8
 PING_SECONDS = 5  # закрита вкладка звільняє SSE-слот не пізніше ніж за стільки секунд
 
@@ -38,7 +45,8 @@ def is_web_url(url) -> bool:
         return False
 
 
-def make_handler(board: Board, cfg: Config, launcher=subprocess.Popen, terminator_config: Path = TERMINATOR_CONFIG):
+def make_handler(board: Board, cfg: Config, launcher=subprocess.Popen, terminator_config: Path = TERMINATOR_CONFIG,
+                 term: TermService | None = None):
     sse_slots = threading.BoundedSemaphore(MAX_SSE)
 
     class Handler(BaseHTTPRequestHandler):
@@ -60,7 +68,7 @@ def make_handler(board: Board, cfg: Config, launcher=subprocess.Popen, terminato
             port = self.server.server_address[1]
             return {f"127.0.0.1:{port}", f"localhost:{port}"}
 
-        def _guard(self, post: bool) -> bool:
+        def _guard(self, post: bool, want: str = "application/json") -> bool:
             """Захист від DNS rebinding і CSRF: лише наш Host, а POST — лише JSON з нашого Origin."""
             if self.headers.get("Host") not in self._hosts():
                 self._json(403, {"error": "forbidden host"})
@@ -68,7 +76,7 @@ def make_handler(board: Board, cfg: Config, launcher=subprocess.Popen, terminato
             if post:
                 ctype = (self.headers.get("Content-Type") or "").split(";")[0].strip().lower()
                 origin = self.headers.get("Origin")
-                if ctype != "application/json" or origin is None or origin.split("://", 1)[-1] not in self._hosts():
+                if ctype != want or origin is None or origin.split("://", 1)[-1] not in self._hosts():
                     self._json(403, {"error": "forbidden origin"})
                     return False
             return True
@@ -77,6 +85,8 @@ def make_handler(board: Board, cfg: Config, launcher=subprocess.Popen, terminato
             """None — тіло не прочитати (невалідний Content-Length чи JSON)."""
             try:
                 length = int(self.headers.get("Content-Length") or 0)
+                if not 0 <= length <= MAX_BODY:
+                    return None
                 data = json.loads(self.rfile.read(length) or b"{}")
             except (ValueError, json.JSONDecodeError):
                 return None
@@ -88,6 +98,10 @@ def make_handler(board: Board, cfg: Config, launcher=subprocess.Popen, terminato
             path = urlsplit(self.path).path
             if path == "/":
                 self._send(200, WEB.read_bytes(), "text/html; charset=utf-8")
+            elif path in STATIC:
+                self._send(200, (WEB.parent / path[1:]).read_bytes(), STATIC[path] + "; charset=utf-8")
+            elif path == "/api/term/stream":
+                self._term_stream()
             elif path == "/icon":
                 self._icon()
             elif path == "/api/board":
@@ -107,6 +121,37 @@ def make_handler(board: Board, cfg: Config, launcher=subprocess.Popen, terminato
             if not ctype or not icon.is_file():
                 return self._json(404, {"error": "no icon"})
             self._send(200, icon.read_bytes(), ctype)
+
+        def _term_stream(self):
+            origin = self.headers.get("Origin")
+            if origin is not None and origin.split("://", 1)[-1] not in self._hosts():
+                return self._json(403, {"error": "forbidden origin"})
+            key = (parse_qs(urlsplit(self.path).query).get("key") or [""])[0]
+            viewer = term.viewers.claim(key) if term else None
+            if viewer is None:
+                return self._json(404, {"error": "unknown key"})
+
+            def write(data: bytes) -> None:
+                self.wfile.write(data)
+                self.wfile.flush()
+            try:
+                self.send_response(200)
+                self.send_header("Content-Type", "text/event-stream; charset=utf-8")
+                self.send_header("Cache-Control", "no-store")
+                self.end_headers()
+            except OSError:
+                return term.viewers.close(viewer)
+            term.stream(viewer, write)
+
+        def _dictate(self):
+            if not self._guard(post=True, want="application/octet-stream"):
+                return
+            length = self.headers.get("Content-Length") or ""
+            if not term or not length.isdigit() or not 0 < int(length) <= MAX_PCM:
+                return self._json(413, {"error": "порожній або завеликий запис"})
+            pcm = self.rfile.read(int(length))
+            lang = (parse_qs(urlsplit(self.path).query).get("lang") or ["auto"])[0]
+            self._json(*term.dictate(pcm, lang))
 
         def _events(self):
             if not sse_slots.acquire(blocking=False):
@@ -137,6 +182,8 @@ def make_handler(board: Board, cfg: Config, launcher=subprocess.Popen, terminato
                 return
 
         def do_POST(self):
+            if urlsplit(self.path).path == "/api/dictate":
+                return self._dictate()
             if not self._guard(post=True):
                 return
             path = urlsplit(self.path).path
@@ -161,7 +208,10 @@ def make_handler(board: Board, cfg: Config, launcher=subprocess.Popen, terminato
                 if not card:
                     return self._json(404, {"error": "unknown session"})
                 return self._json(200, open_in_terminator(card, cfg.config_dir_env(), popen=launcher,
-                                                                 config_path=terminator_config))
+                                                                 config_path=terminator_config,
+                                                                 attach=term.jump_info(sid) if term else None))
+            if path.startswith("/api/term/") and term:
+                return self._json(*term.post(path, body))
             if path == "/api/open":
                 return self._open(body.get("url"))
             if path == "/api/projects":
@@ -208,10 +258,12 @@ def make_handler(board: Board, cfg: Config, launcher=subprocess.Popen, terminato
     return Handler
 
 
-def scan_loop(board: Board, interval: float) -> None:
+def scan_loop(board: Board, interval: float, term: TermService | None = None) -> None:
     while True:
         try:
             board.scan()
+            if term:
+                term.tick()
         except Exception:
             log.exception("scan failed")
         time.sleep(interval)
@@ -220,8 +272,11 @@ def scan_loop(board: Board, interval: float) -> None:
 def build(cfg: Config) -> tuple[Board, ThreadingHTTPServer]:
     """Дошка з уже виконаним першим сканом і сервер, який ще не слухає запити."""
     board = Board(cfg, Store(cfg.db_path))
+    term = TermService(board, Terminals(f"agent-board-{cfg.port}", cfg.config_dir_env()),
+                       Dictation(cfg.dictation_model, cfg.dictation_threads, cfg.dictation_languages))
+    board.term = term
     board.scan()  # перший скан до старту HTTP, щоб сторінка одразу показала картки
-    httpd = ThreadingHTTPServer((cfg.host, cfg.port), make_handler(board, cfg))
+    httpd = ThreadingHTTPServer((cfg.host, cfg.port), make_handler(board, cfg, term=term))
     httpd.daemon_threads = True
     return board, httpd
 
@@ -231,7 +286,7 @@ def main(argv: list[str] | None = None) -> None:
     cfg_path = Path(argv[0]) if argv else Path(os.environ.get("AGENT_BOARD_CONFIG") or ROOT / "config.toml")
     cfg = load_config(cfg_path)
     board, httpd = build(cfg)
-    threading.Thread(target=scan_loop, args=(board, cfg.poll_seconds), daemon=True).start()
+    threading.Thread(target=scan_loop, args=(board, cfg.poll_seconds, board.term), daemon=True).start()
     log.info("agent-board «%s» on http://%s:%s (claude_dir=%s, haiku=%s)", cfg.board_name, cfg.host, cfg.port,
              cfg.claude_dir, "on" if cfg.summary_enabled else "off")
     httpd.serve_forever()

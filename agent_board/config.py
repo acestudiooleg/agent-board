@@ -18,6 +18,7 @@ SIMPLE_KEYS = (
     "summary_concurrency", "summary_per_hour", "summary_retry_seconds", "summary_backoff_max_seconds",
     "summary_breaker_failures", "summary_breaker_seconds", "summary_timeout_seconds",
     "summary_command", "summary_exclude_families", "worktree_rules",
+    "dictation_model", "dictation_threads", "dictation_languages",
 )
 PATH_KEYS = ("claude_dir", "db_path", "haiku_cwd", "icon")
 DEFAULT_CLAUDE_DIR = Path.home() / ".claude"
@@ -53,6 +54,9 @@ class Config:
     summary_breaker_failures: int = 5
     summary_breaker_seconds: int = 3600
     summary_timeout_seconds: int = 120
+    dictation_model: str = "small"  # модель faster-whisper з локального кешу
+    dictation_threads: int = 8
+    dictation_languages: list[str] = field(default_factory=lambda: ["uk", "ru", "en"])  # між чим вибирає «авто»
     summary_command: list[str] = field(default_factory=lambda: list(SUMMARY_COMMAND))
     summary_exclude_families: list[str] = field(default_factory=list)
     summary_exclude_paths: list[str] = field(default_factory=list)

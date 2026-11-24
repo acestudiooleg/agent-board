@@ -31,6 +31,7 @@ class Board:
         self._status: dict = {}
         self._lock = threading.RLock()
         self.changed = threading.Condition()
+        self.term_info = None  # TermService: стан термінала картки
         self.summarizer = None
         if cfg.summary_enabled:
             self.summarizer = Summarizer(
@@ -169,6 +170,7 @@ class Board:
         known = sorted({ref.name for *_, ref in rows if ref.kind != "dir"})
         self.known_public = [p for p in known if family_of(p, self.cfg.families)[0] not in excluded_families]
         cards = []
+        term_fields = self.term_info() if self.term_info else lambda sid, lv: {}
         for sid, t, lv, cwd, ref in rows:
             family, icon = family_of(ref.name, self.cfg.families)
             related = set(related_projects(self.resolver, t.files, t.dirs, ref.name))
@@ -208,6 +210,7 @@ class Board:
                 "summary_error": self.errors.get(sid),
                 "mark": {"kind": mark.kind, "until": mark.until} if mark else None,
                 "version": t.version,
+                **term_fields(sid, lv),
             })
         cards.sort(key=lambda c: -c["last_activity"])
         return cards

@@ -171,13 +171,19 @@ def clean_env(environ=None) -> dict:
 
 def open_in_terminator(card: dict, config_dir: str = "", popen=subprocess.Popen,
                        config_path: Path = TERMINATOR_CONFIG, user_config: Path = USER_TERMINATOR_CONFIG,
-                       run=subprocess.run) -> dict:
+                       run=subprocess.run, attach: dict | None = None) -> dict:
     """«Перейти»: закрита розмова — Terminator на весь екран з вашим фоном, вкладка «назва картки» з resume.
     Жива — не відкриваємо (друга копія зламала б сесію), лише повертаємо команду."""
     raw_cwd = card.get("cwd") or ""
     cwd = raw_cwd if raw_cwd.startswith("/") else ""  # не даємо cwd стати опцією
     command = resume_command(cwd, card["id"], config_dir)
-    if card.get("live_status"):
+    if attach:
+        # Працює в дошці: те саме tmux в окремому вікні, без другої копії Claude.
+        for pid in attach["pids"]:
+            if focus_live({"pid": pid}, run=run):
+                return {"ok": True, "method": "focus", "command": attach["command"]}
+        command = attach["command"]
+    elif card.get("live_status"):
         # Жива розмова: другу копію не відкриваємо — фокусуємо вікно, де вона вже працює.
         if focus_live(card, run=run):
             return {"ok": True, "method": "focus", "command": command}

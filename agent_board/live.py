@@ -13,6 +13,7 @@ class LiveSession:
     status: str        # "idle" | "busy" | інше
     started_at: float
     kind: str = "interactive"   # "interactive" | "bg" (розмова, переведена у фон)
+    proc_start: str = ""        # час старту процесу (тики): відрізняє його від чужого з тим самим PID
     waiting_for: str = ""       # для status "waiting": чого чекає (напр. «input needed»)
 
 
@@ -46,6 +47,6 @@ def read_live(sessions_dir: Path, alive=pid_alive) -> dict[str, LiveSession]:
         out[d["sessionId"]] = LiveSession(
             pid=pid, session_id=d["sessionId"], cwd=d.get("cwd") or "", name=d.get("name") or "",
             status=d.get("status") or "idle", started_at=(d.get("startedAt") or 0) / 1000, kind=d["kind"],
-            waiting_for=d.get("waitingFor") or "",
+            waiting_for=d.get("waitingFor") or "", proc_start=str(d.get("procStart") or ""),
         )
     return out
