@@ -19,12 +19,23 @@ class DictationError(Exception):
 
 
 class Dictation:
-    def __init__(self, model: str, threads: int, languages: list[str], idle_seconds: float = 600, command=None,
+    def __init__(self, model: str, threads: int, languages: list[str], idle_seconds: float = 600, command=None, check_command=None,
                  load_seconds: float = LOAD_SECONDS, work_seconds: float = WORK_SECONDS):
         self.command = command or [sys.executable, "-m", "agent_board.dictate_worker", model, str(threads), ",".join(languages)]
+        self.check_command = check_command or [sys.executable, "-m", "agent_board.dictate_worker", "--check", model]
+        self.available = False  # доки не перевірено: сторінка не показує диктування
         self.idle_seconds, self.load_seconds, self.work_seconds = idle_seconds, load_seconds, work_seconds
         self.proc, self.timer, self.buf = None, None, b""
         self.lock = threading.Lock()
+
+    def check(self, timeout: float = 30) -> bool:
+        """Чи встановлено Whisper із моделлю. Окремим процесом: сервер дошки важких бібліотек не завантажує."""
+        try:
+            self.available = subprocess.run(self.check_command, cwd=ROOT, stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
+                                            stderr=subprocess.DEVNULL, timeout=timeout).returncode == 0
+        except (OSError, subprocess.TimeoutExpired):
+            self.available = False
+        return self.available
 
     def transcribe(self, pcm: bytes, lang: str) -> dict:
         if lang not in LANGS:

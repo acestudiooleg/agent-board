@@ -30,6 +30,8 @@ stty -echo; echo ГОТОВО; while read -r x; do [ "$x" = вихід ] && exit
 
 
 class FakeDictation:
+    available = True
+
     def transcribe(self, pcm, lang):
         return {"text": f"{len(pcm)} байтів", "lang": lang}
 
@@ -233,6 +235,19 @@ class TermApiTest(unittest.TestCase):
             s.sendall(f"POST {path} HTTP/1.1\r\nHost: 127.0.0.1:{self.port}\r\nOrigin: http://127.0.0.1:{self.port}\r\n"
                       f"Content-Type: {ctype}\r\nContent-Length: {length}\r\n\r\n".encode())
             return s.recv(100).split()[1]
+
+    def test_board_tells_whether_dictation_is_available(self):
+        def flag():
+            conn = http.client.HTTPConnection("127.0.0.1", self.port, timeout=5)
+            conn.request("GET", "/api/board")
+            data = json.loads(conn.getresponse().read())
+            conn.close()
+            return data["dictation"]
+        self.assertFalse(flag())
+        self.board.term = self.service
+        self.assertTrue(flag())
+        self.service.dictation.available = False  # лише цього екземпляра
+        self.assertFalse(flag())
 
     def test_static(self):
         conn = http.client.HTTPConnection("127.0.0.1", self.port, timeout=5)

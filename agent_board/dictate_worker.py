@@ -4,7 +4,20 @@ import os
 import sys
 
 
+def check(model_name: str) -> bool:
+    """Чи є faster-whisper і завантажена модель (без мережі)."""
+    os.environ["HF_HUB_OFFLINE"] = "1"
+    try:
+        from faster_whisper.utils import download_model
+        path = model_name if os.path.isdir(model_name) else download_model(model_name, local_files_only=True)
+        return os.path.isfile(os.path.join(path, "model.bin"))
+    except Exception:
+        return False
+
+
 def main() -> None:
+    if sys.argv[1] == "--check":
+        sys.exit(0 if check(sys.argv[2]) else 1)
     out = os.fdopen(os.dup(1), "w", encoding="utf-8")
     os.dup2(2, 1)  # випадковий друк бібліотек не псує протокол
     os.environ["HF_HUB_OFFLINE"] = "1"

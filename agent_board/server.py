@@ -33,7 +33,7 @@ PING_SECONDS = 5  # закрита вкладка звільняє SSE-слот 
 
 def board_payload(board: Board) -> dict:
     version, cards = board.snapshot()
-    return {"version": version, "build": BUILD, "board": board.cfg.board_name, "planet": board.cfg.planet, "cards": cards,
+    return {"version": version, "build": BUILD, "dictation": bool(board.term and board.term.dictation.available), "board": board.cfg.board_name, "planet": board.cfg.planet, "cards": cards,
             "haiku": board.summary_status()}
 
 
@@ -280,7 +280,11 @@ def build(cfg: Config) -> tuple[Board, ThreadingHTTPServer]:
     term = TermService(board, Terminals(f"agent-board-{cfg.port}", cfg.config_dir_env()),
                        Dictation(cfg.dictation_model, cfg.dictation_threads, cfg.dictation_languages))
     board.term = term
+    check = threading.Thread(target=term.dictation.check, daemon=True)
+    check.start()  # паралельно зі сканом
     board.scan()  # перший скан до старту HTTP, щоб сторінка одразу показала картки
+    check.join()
+    log.info("dictation: %s", "on" if term.dictation.available else "off (немає faster-whisper або моделі)")
     httpd = ThreadingHTTPServer((cfg.host, cfg.port), make_handler(board, cfg, term=term))
     httpd.daemon_threads = True
     return board, httpd

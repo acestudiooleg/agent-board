@@ -22,7 +22,7 @@ window.Term = (() => {
     term.onSelectionChange(() => {});
     term.attachCustomKeyEventHandler(e => {
       if (e.type !== "keydown") return true;
-      if (e.ctrlKey && e.code === "Space") return false;                       // мікрофон
+      if (e.ctrlKey && e.code === "Space" && S.dictation) return false;        // мікрофон
       if (e.ctrlKey && !e.altKey && e.code === "KeyV") return false;           // вставлення браузера
       if (e.ctrlKey && !e.altKey && e.code === "KeyC" && term.hasSelection()) { navigator.clipboard.writeText(term.getSelection()); term.clearSelection(); e.preventDefault(); return false; }
       return true;
@@ -254,7 +254,7 @@ window.Term = (() => {
     grow(); t.focus();
   }
   document.addEventListener("keydown", e => {
-    if (e.ctrlKey && e.code === "Space" && document.body.classList.contains("tab-term")) { e.preventDefault(); mic(); }
+    if (S.dictation && e.ctrlKey && e.code === "Space" && document.body.classList.contains("tab-term")) { e.preventDefault(); mic(); }
   });
   document.addEventListener("fontchange", () => { grow(); if (term) { term.options.fontSize = fontSize(); doFit(); } });
   window.addEventListener("pagehide", detach);

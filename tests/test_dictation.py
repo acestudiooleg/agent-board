@@ -1,5 +1,6 @@
 import os
 import sys
+import tempfile
 import textwrap
 import time
 import unittest
@@ -62,6 +63,22 @@ class DictationTest(unittest.TestCase):
         self.addCleanup(os.chdir, old)
         os.chdir("/")
         self.assertEqual(d.transcribe(b"ab", "uk")["text"], "ok")
+
+    def test_check(self):
+        d = self.make()
+        self.assertFalse(d.available)
+        for code, want in (("pass", True), ("raise SystemExit(1)", False)):
+            d.check_command = [sys.executable, "-c", code]
+            self.assertEqual((d.check(), d.available), (want, want))
+        d.check_command = [sys.executable, "-c", "import time; time.sleep(9)"]
+        self.assertFalse(d.check(timeout=0.2))
+        d.check_command = ["/nope/nope"]
+        self.assertFalse(d.check())
+
+    def test_worker_check_rejects_missing_model(self):
+        self.assertFalse(Dictation("no/such-model-xyz", 1, ["uk"]).check())
+        with tempfile.TemporaryDirectory() as empty:
+            self.assertFalse(Dictation(empty, 1, ["uk"]).check())
 
     def test_idle_stops_process(self):
         d = self.make(idle_seconds=0.2)

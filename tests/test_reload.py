@@ -9,7 +9,7 @@ JS = """
 let reloads = 0, focus = "BODY", idle = true;
 const S = {build: null}, window = {Term: {idle: () => idle}}, Term = window.Term;
 const location = {reload() { reloads++; }}, render = () => {}, loadProjects = () => {};
-const document = {get activeElement() { return {tagName: focus, matches: () => false}; }, documentElement: {classList: {toggle() {}}}};
+const document = {get activeElement() { return {tagName: focus, matches: () => false}; }, documentElement: {classList: {toggle() {}}}, body: {classList: {toggle() {}}}};
 %s
 const out = [], step = () => { out.push(reloads); reloads = 0; };
 apply({build: "a"}); step();                       // перше завантаження

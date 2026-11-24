@@ -31,6 +31,7 @@ class Board:
         self._status: dict = {}
         self._lock = threading.RLock()
         self.changed = threading.Condition()
+        self.term = None       # TermService, якщо сервер його створив
         self.term_info = None  # TermService: стан термінала картки
         self.summarizer = None
         if cfg.summary_enabled:
