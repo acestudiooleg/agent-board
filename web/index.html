@@ -348,7 +348,7 @@ body.term-full.tab-term.panel-open main{margin-right:0}
 #term-text:focus{border-color:var(--cyan)}
 #term-lang{font:inherit;font-size:13px;padding:5px 8px;border-radius:8px;border:1px solid var(--line-hi);background:#0c2036;color:var(--ink)}
 #term-mic.rec{background:rgba(255,70,110,.35);border-color:#ff5c8a;color:#fff}
-body.no-jump [data-act=jump]{display:none}
+body.no-jump [data-act=jump],body.no-editor [data-act=editor]{display:none}
 body.no-mic #term-mic,body.no-mic #term-lang{display:none}
 #term-stop{display:none;margin-left:auto}
 #term.on #term-stop{display:inline-block}
@@ -559,7 +559,7 @@ function projectsHtml() {
   const e = S.pjEdit || {name: "", path: "", old: ""};
   const row = (p, user) => `<div class="pj-row"><b><button class="pj-icon" data-act="pj-icon" data-name="${esc(p.name)}" title="Змінити значок">${esc(p.icon || "＋")}</button> ${esc(p.name)}</b><span class="pj-path">${esc(p.path)}</span>
       <span class="pj-count">${p.count} розм.</span>
-      <span><button data-act="new" data-project="${esc(p.name)}" title="Новий чат у цьому проєкті">＋</button> ${user ? `<button data-act="pj-edit" data-path="${esc(p.path)}" data-name="${esc(p.name)}">✎</button> <button data-act="pj-del" data-path="${esc(p.path)}" title="Видалити">✕</button>`
+      <span><button data-act="new" data-project="${esc(p.name)}" title="Новий чат у цьому проєкті">＋</button> <button data-act="editor" data-path="${esc(p.path)}" title="Відкрити у VS Code">&lt;/&gt;</button> ${user ? `<button data-act="pj-edit" data-path="${esc(p.path)}" data-name="${esc(p.name)}">✎</button> <button data-act="pj-del" data-path="${esc(p.path)}" title="Видалити">✕</button>`
                     : `<button data-act="pj-adopt" data-path="${esc(p.path)}" data-name="${esc(p.name)}" title="Перейменувати / змінити теку">✎</button>`}</span></div>
       ${S.iconFor === p.name ? `<div class="pj-icons">${ICONS.map(i => `<button data-act="pj-seticon" data-name="${esc(p.name)}" data-icon="${i}">${i}</button>`).join("")}
         <input id="pj-icon-own" maxlength="8" placeholder="свій" value="${esc(p.icon || "")}"><button data-act="pj-seticon-own" data-name="${esc(p.name)}">OK</button>
@@ -617,6 +617,7 @@ function renderPanel() {
   setHtml("panel-tabs", !c || !window.Term ? "" : `<button class="tab ${S.tab === "report" ? "on" : ""}" data-tab="report" ${c.fresh ? "disabled" : ""}>Звіт</button>
     <button class="tab ${S.tab === "term" ? "on" : ""}" data-tab="term">⌨ Термінал${c.term ? " ●" : ""}</button>
     <button data-act="new" data-project="${esc(c.project)}" title="Новий чат у проєкті «${esc(c.project)}»">＋</button>
+    <button data-act="editor" ${c.fresh ? `data-path="${esc(c.cwd)}"` : `data-id="${esc(c.id)}"`} title="Відкрити теку проєкту у VS Code">&lt;/&gt; VS Code</button>
     ${S.tab !== "term" ? "" : `<span class="ttl">${esc(c.project_icon || c.icon)} ${esc(c.name || c.project)}</span>
     <span class="fz"><button data-act="font" data-k="term" data-d="-1" title="Дрібніший шрифт">A−</button><button data-act="font" data-k="term" data-d="1" title="Більший шрифт">A+</button>
     <button data-t="full" title="На все вікно">⛶</button><button data-act="close">✕</button></span>`}`);
@@ -657,6 +658,11 @@ function toast(text) {
 async function post(url, body) {
   const r = await fetch(url, {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify(body)});
   return r.json();
+}
+async function openEditor({id, path}) {
+  let r = {};
+  try { r = await post("/api/editor", {id, path}); } catch (e) {}
+  toast(r.ok ? "Відкриваю у VS Code: " + r.path : "Не вдалося відкрити VS Code" + (r.error ? ": " + r.error : ""));
 }
 async function openLink(url) {
   try { if ((await post("/api/open", {url})).ok) return; } catch (e) {}
@@ -740,6 +746,7 @@ document.addEventListener("click", e => {
   if (tab) { S.tab = tab.dataset.tab; try { sessionStorage.setItem("agent-board-tab", S.tab); } catch (e) {} return render(); }
   const button = e.target.closest("[data-act]");
   if (button?.dataset.act === "font") return setFont(button.dataset.k, +button.dataset.d);
+  if (button?.dataset.act === "editor") return openEditor(button.dataset);
   if (button?.dataset.act === "new") return newChat(button.dataset.project || S.project);
   if (button?.dataset.act === "new-all") { S.newFor = null; return render(); }
   if (button?.dataset.act === "new-start") return startChat(S.folders.find(f => f.path === button.dataset.path));
@@ -771,7 +778,7 @@ document.addEventListener("keydown", e => {
 function maybeReload() {
   if (S.stale && !S.fresh && !["INPUT", "TEXTAREA", "SELECT"].includes(document.activeElement?.tagName) && (!window.Term || Term.idle())) location.reload();
 }
-function apply(d) { S.stale = !!S.build && d.build !== S.build; S.build ??= d.build; maybeReload(); S.dictation = !!d.dictation; document.body.classList.toggle("no-mic", !S.dictation); document.body.classList.toggle("no-jump", d.jump === false); S.cards = d.cards; S.haiku = d.haiku; S.board = d.board || S.board; document.documentElement.classList.toggle("planet-mars", d.planet === "mars"); render();
+function apply(d) { S.stale = !!S.build && d.build !== S.build; S.build ??= d.build; maybeReload(); S.dictation = !!d.dictation; document.body.classList.toggle("no-mic", !S.dictation); document.body.classList.toggle("no-jump", d.jump === false); document.body.classList.toggle("no-editor", !d.editor); S.cards = d.cards; S.haiku = d.haiku; S.board = d.board || S.board; document.documentElement.classList.toggle("planet-mars", d.planet === "mars"); render();
   // Лічильники панелі «Проєкти» оновлюємо разом із дошкою, але не посеред введення у формі.
   if (S.view === "projects" && !document.activeElement?.matches("input")) loadProjects(); }
 fetch("/api/board").then(r => r.json()).then(apply);

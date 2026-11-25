@@ -9,7 +9,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, urlsplit
 
-from . import system
+from . import editor, system
 from .board import Board
 from .config import Config, load_config
 from .dictation import MAX_PCM, Dictation
@@ -34,7 +34,7 @@ PING_SECONDS = 5  # закрита вкладка звільняє SSE-слот 
 
 def board_payload(board: Board) -> dict:
     version, cards = board.snapshot()
-    return {"version": version, "build": BUILD, "jump": system.can_open_window(), "dictation": bool(board.term and board.term.dictation.available), "board": board.cfg.board_name, "planet": board.cfg.planet, "cards": cards,
+    return {"version": version, "build": BUILD, "jump": system.can_open_window(), "editor": bool(editor.command()), "dictation": bool(board.term and board.term.dictation.available), "board": board.cfg.board_name, "planet": board.cfg.planet, "cards": cards,
             "haiku": board.summary_status()}
 
 
@@ -234,6 +234,8 @@ def make_handler(board: Board, cfg: Config, launcher=subprocess.Popen, terminato
                 return self._json(200, {"title": board.take_title(sid) if isinstance(sid, str) else None})
             if path == "/api/open":
                 return self._open(body.get("url"))
+            if path == "/api/editor":
+                return self._editor(body)
             if path == "/api/projects":
                 return self._projects(body)
             return self._json(404, {"error": "not found"})
@@ -242,12 +244,29 @@ def make_handler(board: Board, cfg: Config, launcher=subprocess.Popen, terminato
             """Посилання з панелі — у вашому звичайному браузері: вікно дошки має окремий профіль Chrome без логінів."""
             if not is_web_url(url):
                 return self._json(400, {"error": "bad url"})
+            self._launch(system.open_url_argv(url))
+
+        def _editor(self, body: dict):
+            """{id} — тека картки, {path} — одна з тек, які дошка вже знає: довільний шлях зі сторінки не відкриваємо."""
+            card = board.card(body["id"]) if isinstance(body.get("id"), str) else None
+            if card:
+                folder = editor.folder(card)
+            else:
+                folder = next((f["path"] for f in board.folders() if f["path"] == body.get("path")), None)
+            if not folder:
+                return self._json(404, {"error": "теки цього проєкту немає"})
+            command = editor.command()
+            if not command:
+                return self._json(501, {"error": "VS Code не знайдено"})
+            self._launch([command, folder], path=folder)
+
+        def _launch(self, argv: list[str], **extra):
             try:
-                launcher(system.open_url_argv(url), stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                launcher(argv, stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
                          start_new_session=True, env=clean_env())
             except OSError as exc:
                 return self._json(500, {"error": str(exc)})
-            return self._json(200, {"ok": True})
+            return self._json(200, {"ok": True, **extra})
 
         def _projects(self, body: dict):
             """{action: save, path, name, old_path?} | {action: delete, path} | {action: icon, name, icon}.
