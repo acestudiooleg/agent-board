@@ -34,7 +34,8 @@ PING_SECONDS = 5  # закрита вкладка звільняє SSE-слот 
 
 def board_payload(board: Board) -> dict:
     version, cards = board.snapshot()
-    return {"version": version, "build": BUILD, "jump": system.can_open_window(), "editor": bool(editor.command()), "dictation": bool(board.term and board.term.dictation.available), "board": board.cfg.board_name, "planet": board.cfg.planet, "cards": cards,
+    return {"version": version, "build": BUILD, "jump": system.can_open_window(), "editor": bool(editor.command()), "dictation": bool(board.term and board.term.dictation.available),
+            "terminals": {"open": board.term.open_count, "max": board.term.terminals.max_terminals} if board.term else None, "board": board.cfg.board_name, "planet": board.cfg.planet, "cards": cards,
             "haiku": board.summary_status()}
 
 
@@ -312,8 +313,8 @@ def build(cfg: Config) -> tuple[Board, ThreadingHTTPServer]:
     """Дошка з уже виконаним першим сканом і сервер, який ще не слухає запити."""
     board = Board(cfg, Store(cfg.db_path))
     term = TermService(board, Terminals(f"agent-board-{cfg.port}", cfg.config_dir_env(),
-                                        settings=title_settings(cfg.port) if cfg.auto_title else ""),
-                       Dictation(cfg.dictation_model, cfg.dictation_threads, cfg.dictation_languages))
+                                        settings=title_settings(cfg.port) if cfg.auto_title else "", max_terminals=cfg.max_terminals),
+                       Dictation(cfg.dictation_model, cfg.dictation_threads, cfg.dictation_languages), close_after=cfg.close_archived_after)
     board.term = term
     check = threading.Thread(target=term.dictation.check, daemon=True)
     check.start()  # паралельно зі сканом

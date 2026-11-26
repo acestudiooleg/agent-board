@@ -23,6 +23,10 @@ class TerminalError(Exception):
     pass
 
 
+class TerminalsFull(TerminalError):
+    pass
+
+
 def terminal_env(environ=None) -> dict:
     return {k: v for k, v in clean_env(environ).items() if k not in DROP and not k.startswith("PRAGMA_")}
 
@@ -53,8 +57,9 @@ def clean_text(text: str) -> str:
 
 
 class Terminals:
-    def __init__(self, socket: str, config_dir: str = "", command=None, new_command=None, settings: str = ""):
-        self.socket = socket
+    def __init__(self, socket: str, config_dir: str = "", command=None, new_command=None, settings: str = "",
+                 max_terminals: int = MAX_TERMINALS):
+        self.socket, self.max_terminals = socket, max_terminals
         self.command = command or (lambda sid: claude_argv(sid, config_dir, settings=settings))
         self.new_command = new_command or command or (lambda sid: claude_argv(sid, config_dir, new=True, settings=settings))
         self.lock = threading.RLock()
@@ -105,8 +110,8 @@ class Terminals:
             panes = self.panes()
             if name in panes:
                 return name
-            if len(panes) >= MAX_TERMINALS:
-                raise TerminalError(f"уже відкрито {MAX_TERMINALS} терміналів — завершіть якийсь")
+            if len(panes) >= self.max_terminals:
+                raise TerminalsFull(f"уже відкрито {self.max_terminals} терміналів — завершіть якийсь (список: ⌨ угорі)")
             self.tmux("new-session", "-d", "-s", name, "-x", str(cols), "-y", str(rows), "-c", cwd, "--",
                       *(self.new_command if new else self.command)(sid))
         return name

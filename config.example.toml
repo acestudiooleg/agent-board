@@ -8,6 +8,10 @@ summary_quiet_seconds = 30
 summary_concurrency = 2
 # Підсумки йдуть з лімітів підписки Claude: не більше стількох викликів Haiku на годину.
 summary_per_hour = 20
+# Термінали в картках: скільки одночасно (кожен Claude — сотні МБ пам'яті) і через скільки секунд простою
+# закривати термінал картки «Готово» / «Відкладено» (0 — ніколи; розмову потім можна продовжити).
+max_terminals = 12
+close_archived_after = 300
 # Робоче, що НЕ відправляється в Haiku: родини проєктів і теки (cwd, файли, Bash-команди).
 summary_exclude_families = ["Work"]
 summary_exclude_paths = ["~/work"]

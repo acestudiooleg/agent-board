@@ -2,26 +2,31 @@
 import base64
 import logging
 import shlex
+import time
 import uuid
 
 from .attach import Viewer, Viewers, size_ok
 from .dictation import Dictation, DictationError
 from .live import LiveSession, read_live
 from .takeover import NeedsConfirm, Takeover
-from .terminal import PREFIX, SID_RE, TerminalError, Terminals
+from .terminal import PREFIX, SID_RE, TerminalError, Terminals, TerminalsFull
 
 log = logging.getLogger("agent_board")
 MAX_INPUT = 64 * 1024
 PING_SECONDS = 5
+ARCHIVED = ("done", "snoozed")
 
 
 class TermService:
-    def __init__(self, board, terminals: Terminals, dictation: Dictation):
+    def __init__(self, board, terminals: Terminals, dictation: Dictation, close_after: float = 0):
         self.board, self.terminals, self.dictation = board, terminals, dictation
+        self.close_after = close_after  # секунд простою архівної картки до автозакриття; 0 — не закривати
+        self.idle_since: dict[str, float] = {}
+        self.open_count = 0
         self.viewers = Viewers(terminals)
         self.sessions_dir = board.cfg.claude_dir / "sessions"
         self.takeover = Takeover(self.sessions_dir, terminals, state_of=lambda sid: (board.card(sid) or {}).get("state"))
-        board.term_info = self.info
+        board.term_info, board.term = self.info, self
 
     # ---------- для дошки ----------
     def info(self):
@@ -30,14 +35,40 @@ class TermService:
             panes = self.terminals.panes()
         except TerminalError:
             panes = {}
+        self.open_count = len(panes)
 
         def fields(sid: str, lv: LiveSession | None) -> dict:
             return {"term": bool(lv and self.terminals.name_for_pid(lv.pid, panes)), "live_kind": lv.kind if lv else None,
                     "armed": sid in self.takeover.armed, "take_error": self.takeover.errors.get(sid)}
         return fields
 
-    def tick(self) -> None:
+    def tick(self, now: float | None = None) -> None:
         if self.takeover.armed and self.takeover.tick():
+            self.board.scan()
+        self._close_archived(time.monotonic() if now is None else now)
+
+    def _close_archived(self, now: float) -> None:
+        """Картку позначили «Готово» чи відклали, а Claude у її терміналі простоює: термінал закривається сам.
+        Розмова лишається, її можна продовжити. Поки картка відкрита у вікні, чекаємо."""
+        if self.close_after <= 0:
+            self.idle_since.clear()
+            return
+        watched = {v.sid for v in list(self.viewers.by_key.values())}
+        since, stopped = {}, False
+        for c in self.board.snapshot()[1]:
+            if not (c.get("term") and c["state"] in ARCHIVED and c["live_status"] == "idle" and not c["background"]):
+                continue
+            sid = c["id"]
+            since[sid] = self.idle_since.get(sid, now)
+            if now - since[sid] >= self.close_after and sid not in watched:
+                name = self._safe_running(sid)
+                if name:
+                    log.info("auto-close archived terminal %s", sid)
+                    self.terminals.stop(name)
+                    stopped = True
+                since.pop(sid)
+        self.idle_since = since
+        if stopped:
             self.board.scan()
 
     def close(self) -> None:
@@ -61,6 +92,12 @@ class TermService:
             raise TerminalError("у терміналі цієї розмови вже інша (після /clear) — відкрийте її картку")
         return name
 
+    def _safe_running(self, sid: str) -> str | None:
+        try:
+            return self._running(sid)
+        except TerminalError:
+            return None
+
     def jump_info(self, sid: str) -> dict | None:
         """Для «Перейти»: команда під'єднання й глядачі, чиє вікно можна сфокусувати."""
         try:
@@ -80,6 +117,8 @@ class TermService:
             return action(body)
         except NeedsConfirm as exc:
             return 409, {"error": str(exc), "confirm": True}
+        except TerminalsFull as exc:
+            return 409, {"error": str(exc), "full": True}
         except TerminalError as exc:
             return 409, {"error": str(exc)}
 

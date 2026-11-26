@@ -184,6 +184,63 @@ class TermApiTest(unittest.TestCase):
         self.assertEqual(self.terms.panes(), {})
         self.assertEqual(self.post("/api/term/stop", {"id": "aaa"})[0], 409)
 
+    def test_limit_from_config_tells_page_to_show_terminals(self):
+        self.terms.max_terminals = 1
+        self.started()
+        self.board.scan()
+        from agent_board.server import board_payload
+        self.assertEqual(board_payload(self.board)["terminals"], {"open": 1, "max": 1})
+        status, data = self.post("/api/term/new", {"path": self.tmp.name, "cols": 80, "rows": 24})
+        self.assertEqual(status, 409)
+        self.assertTrue(data["full"], data)
+        self.assertIn("1 терміналів", data["error"])
+
+    def archived_idle(self, status="idle"):
+        (self.root / "status").write_text(status)
+        key, r = self.started()
+        self.board.scan()
+        self.board.mark("aaa", "done")
+        self.board.scan()
+        return key
+
+    def test_archived_idle_terminal_closes_itself(self):
+        key = self.archived_idle()
+        self.service.close_after = 60  # секунд
+        self.service.tick(now=1000)
+        self.service.tick(now=1059)
+        self.assertEqual(len(self.terms.panes()), 1, "ще не минуло")
+        self.service.tick(now=1061)
+        self.assertEqual(len(self.terms.panes()), 1, "картка відкрита у вікні")
+        self.post("/api/term/detach", {"key": key})
+        self.service.tick(now=1062)
+        self.assertEqual(self.terms.panes(), {})
+        self.assertFalse(self.board.card("aaa")["term"])
+
+    def test_busy_unarchived_or_disabled_are_kept(self):
+        key = self.archived_idle("busy")
+        self.post("/api/term/detach", {"key": key})
+        self.service.close_after = 1
+        self.service.tick(now=0)
+        self.service.tick(now=100)
+        self.assertEqual(len(self.terms.panes()), 1, "агент працює")
+        (self.root / "claude/sessions").joinpath(next(f.name for f in (self.root / "claude/sessions").iterdir())).write_text(
+            json.dumps({**json.loads(next((self.root / "claude/sessions").iterdir()).read_text()), "status": "idle"}))
+        self.board.mark("aaa", "clear")
+        self.board.scan()
+        self.service.tick(now=200)
+        self.service.tick(now=300)
+        self.assertEqual(len(self.terms.panes()), 1, "картку повернули з архіву")
+        self.board.mark("aaa", "snooze")
+        self.board.scan()
+        self.service.close_after = 0
+        self.service.tick(now=400)
+        self.service.tick(now=500)
+        self.assertEqual(len(self.terms.panes()), 1, "вимкнено")
+        self.service.close_after = 1
+        self.service.tick(now=600)
+        self.service.tick(now=700)
+        self.assertEqual(self.terms.panes(), {})
+
     def test_live_elsewhere_and_takeover(self):
         p = subprocess.Popen(["sleep", "60"])
         self.addCleanup(lambda: (p.kill(), p.wait()))
@@ -245,9 +302,7 @@ class TermApiTest(unittest.TestCase):
             data = json.loads(conn.getresponse().read())
             conn.close()
             return data["dictation"]
-        self.assertFalse(flag())
-        self.board.term = self.service
-        self.assertTrue(flag())
+        self.assertTrue(flag())  # сервіс сам під'єднується до дошки
         self.service.dictation.available = False  # лише цього екземпляра
         self.assertFalse(flag())
 

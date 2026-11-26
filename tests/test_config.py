@@ -3,7 +3,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from agent_board.config import load_config
+from agent_board.config import Config, load_config
 
 ROOT = Path(__file__).resolve().parent.parent
 
@@ -73,6 +73,14 @@ class LoadConfigTest(unittest.TestCase):
         self.assertTrue(personal.summary_enabled)
         self.assertEqual((personal.summary_exclude_families, work.planet), (["Work"], "mars"))
         self.assertIn(str(Path.home() / "work"), personal.summary_exclude_paths)
+
+    def test_terminal_limits(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "c.toml"
+            path.write_text("[board]\nmax_terminals = 20\nclose_archived_after = 0\n")
+            cfg = load_config(path)
+        self.assertEqual((cfg.max_terminals, cfg.close_archived_after), (20, 0))
+        self.assertEqual((Config().max_terminals, Config().close_archived_after), (12, 300))
 
 
 if __name__ == "__main__":

@@ -40,6 +40,8 @@ header{display:flex;gap:18px;align-items:center;flex-wrap:wrap;padding:14px 20px
   background:linear-gradient(90deg,rgba(67,230,255,.08),transparent 60%);backdrop-filter:blur(6px);position:sticky;top:0;z-index:5}
 header h1{font-size:18px;margin:0;font-weight:600;letter-spacing:.18em;text-transform:uppercase;color:var(--cyan)}
 #stats{color:var(--muted);font-size:13px;letter-spacing:.06em}
+#terms-btn{font-size:13px}#terms-btn[hidden]{display:none}#terms-btn.full{border-color:#ff5c8a;color:#ffb3c7}
+.tmark{color:var(--cyan);margin-left:6px}
 #stats::before{content:"";display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--teal);box-shadow:0 0 8px var(--teal);margin-right:8px;animation:pulse 2.4s ease-in-out infinite}
 @keyframes pulse{50%{opacity:.35}}
 label{color:var(--muted);font-size:13px;cursor:pointer}
@@ -359,7 +361,7 @@ body.no-mic #term-mic,body.no-mic #term-lang{display:none}
 <body>
 <canvas id="stars" aria-hidden="true"></canvas><div class="planet" aria-hidden="true"></div><div class="moon" aria-hidden="true"></div><div class="planet2" aria-hidden="true"></div><div class="planet3" aria-hidden="true"></div>
 <div class="aurora" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></div>
-<header><h1><img id="board-icon" src="/icon" alt="" onerror="this.replaceWith(document.createTextNode('👥'))"><span id="board">Команда</span></h1><span id="stats"></span><button class="primary" data-act="new" style="margin-left:auto" title="Почати нову розмову з Claude в теці проєкту">＋ Новий чат</button><button id="projects-btn" title="Ваші проєкти: назва й тека">🗂 Проєкти</button><span class="fz"><button data-act="font" data-k="board" data-d="-1" title="Дрібніший шрифт">A−</button><button data-act="font" data-k="board" data-d="1" title="Більший шрифт">A+</button></span><select id="theme" title="Тема дошки й термінала"></select><label><input type="checkbox" id="archive"> показати архів</label></header>
+<header><h1><img id="board-icon" src="/icon" alt="" onerror="this.replaceWith(document.createTextNode('👥'))"><span id="board">Команда</span></h1><span id="stats"></span><button id="terms-btn" class="chip" hidden title="Термінали, відкриті в дошці: показати лише ці картки (і з архіву)"></button><button class="primary" data-act="new" style="margin-left:auto" title="Почати нову розмову з Claude в теці проєкту">＋ Новий чат</button><button id="projects-btn" title="Ваші проєкти: назва й тека">🗂 Проєкти</button><span class="fz"><button data-act="font" data-k="board" data-d="-1" title="Дрібніший шрифт">A−</button><button data-act="font" data-k="board" data-d="1" title="Більший шрифт">A+</button></span><select id="theme" title="Тема дошки й термінала"></select><label><input type="checkbox" id="archive"> показати архів</label></header>
 <div id="filters"><input id="q" type="search" placeholder="Пошук карток…  ( / )" autocomplete="off"><div id="chips"></div></div>
 <main><div id="room"></div></main><aside id="panel"><div id="panel-actions"></div><div id="panel-tabs"></div><div id="panel-body"></div>
 <div id="term"><div id="term-view"><div id="term-screen"></div><div id="term-empty"></div></div>
@@ -484,7 +486,7 @@ function cardHtml(c) {
   const old = c.old_tab_live ? `<div class="raw">🗂 стара вкладка цієї розмови ще відкрита</div>` : "";
   const a = ask(c);
   return `<div class="card ${c.state} ${S.sel === c.id ? "sel" : ""}" data-id="${esc(c.id)}">
-    <div class="top"><span class="name">${esc(c.project_icon || c.icon)} ${esc(c.name || c.project)}</span><span class="age">${age(c.last_activity)}</span></div>
+    <div class="top"><span class="name">${esc(c.project_icon || c.icon)} ${esc(c.name || c.project)}${c.term ? `<span class="tmark" title="Відкрита в терміналі дошки">⌨</span>` : ""}</span><span class="age">${age(c.last_activity)}</span></div>
     <div class="proj">${esc(c.family)} · ${esc(c.project)}${c.worktree ? " / " + esc(c.worktree) : ""}${rel}</div>
     <div class="title">${esc(cut(headline(c), 120))}</div>
     ${a ? `<div class="ask">${esc(a)}</div>` : ""}${warn}${old}${note(c)}</div>`;
@@ -517,7 +519,7 @@ function listHtml(list) {
 }
 function chipHtml(c) {
   const until = c.state === "snoozed" && c.mark?.until ? ` · до ${new Date(c.mark.until * 1000).toLocaleDateString("uk")}` : "";
-  return `<div class="card ${c.state} ${S.sel === c.id ? "sel" : ""}" data-id="${esc(c.id)}">${esc(c.project_icon || c.icon)} ${esc(c.project)} · ${esc(cut(headline(c), 50))} · ${age(c.last_activity)}${until}</div>`;
+  return `<div class="card ${c.state} ${S.sel === c.id ? "sel" : ""}" data-id="${esc(c.id)}">${esc(c.project_icon || c.icon)} ${esc(c.project)} · ${esc(cut(headline(c), 50))} · ${age(c.last_activity)}${until}${c.term ? `<span class="tmark" title="Відкрита в терміналі дошки">⌨</span>` : ""}</div>`;
 }
 function haikuText() {
   const h = S.haiku || {};
@@ -530,7 +532,12 @@ function render() {
   const terms = S.q.toLowerCase().split(/\s+/).filter(Boolean);
   const hay = c => [c.title, c.summary?.about, c.summary?.waiting_for, c.project, c.worktree, c.family, c.name,
                     c.first_user, c.last_user, c.last_agent, c.cwd].join(" ").toLowerCase();
-  const cards = S.cards.filter(c => (!S.project || c.project === S.project) && terms.every(t => hay(c).includes(t)));
+  const T = S.terminals || {open: 0, max: 0};
+  if (S.onlyTerm && !T.open) S.onlyTerm = false;
+  const tb = document.getElementById("terms-btn");
+  tb.hidden = !T.open; tb.textContent = `⌨ ${T.open}/${T.max}`;
+  tb.classList.toggle("on", !!S.onlyTerm); tb.classList.toggle("full", T.open >= T.max);
+  const cards = S.cards.filter(c => (!S.project || c.project === S.project) && (!S.onlyTerm || c.term) && terms.every(t => hay(c).includes(t)));
   const live = S.cards.filter(c => c.live_status).length;
   const waiting = S.cards.filter(c => c.state === "waiting").length;
   document.getElementById("stats").textContent = `${live} живих · ${waiting} чекають на вас` + haikuText();
@@ -544,7 +551,9 @@ function render() {
   if (S.project && !pcounts[S.project]) S.project = null;
   setHtml("chips", [`<button class="chip ${S.project ? "" : "on"}" data-p="">Усі</button>`,
     ...projs.map(p => `<button class="chip ${S.project === p ? "on" : ""}" data-p="${esc(p)}">${pIcons[p] ? esc(pIcons[p]) + " " : ""}${esc(p)} ${pcounts[p]}</button>`)].join(""));
-  setHtml("room", ZONES.filter(z => !z.archive || showArchive).map(z => {
+  const lost = S.onlyTerm ? T.open - S.cards.filter(c => c.term).length : 0;
+  setHtml("room", (S.onlyTerm ? `<p class="raw">⌨ Лише картки з терміналом у дошці, разом з архівом. Завершити: картка → «Термінал» → «Завершити». Картки «Готово» й «Відкладено» закриваються самі, коли Claude простоює.${lost > 0 ? ` Ще ${lost} — без картки на дошці.` : ""} <button data-act="terms-all">Показати всі</button></p>` : "") +
+    ZONES.filter(z => !z.archive || showArchive || S.onlyTerm).map(z => {
     const list = cards.filter(c => z.states.includes(c.state));
     if (!list.length) return "";
     if (z.list) return `<h2>${z.title} · ${list.length}</h2><div>${listHtml(list)}</div>`;
@@ -598,6 +607,7 @@ async function startChat(f) {
   let r;
   try { r = await post("/api/term/new", {path: f.path, cols: 100, rows: 34}); } catch (e) { r = {error: "дошка не відповідає"}; }
   S.starting = false;
+  if (r.full) window.showTerminals();
   if (!r.id) return toast(r.error || "Не вдалося почати чат");
   // Поки дошка не побачила розмову, показуємо тимчасову картку з тим самим id.
   S.fresh = {id: r.id, fresh: true, term: true, name: "Новий чат", project: f.project, icon: f.icon, cwd: f.path};
@@ -746,6 +756,7 @@ document.addEventListener("click", e => {
   if (tab) { S.tab = tab.dataset.tab; try { sessionStorage.setItem("agent-board-tab", S.tab); } catch (e) {} return render(); }
   const button = e.target.closest("[data-act]");
   if (button?.dataset.act === "font") return setFont(button.dataset.k, +button.dataset.d);
+  if (button?.dataset.act === "terms-all") { S.onlyTerm = false; return render(); }
   if (button?.dataset.act === "editor") return openEditor(button.dataset);
   if (button?.dataset.act === "new") return newChat(button.dataset.project || S.project);
   if (button?.dataset.act === "new-all") { S.newFor = null; return render(); }
@@ -763,6 +774,8 @@ document.addEventListener("click", e => {
   }
 });
 document.getElementById("archive").addEventListener("change", render);
+document.getElementById("terms-btn").addEventListener("click", () => { S.onlyTerm = !S.onlyTerm; render(); });
+window.showTerminals = () => { S.onlyTerm = true; S.sel = null; S.view = null; history.replaceState(null, "", location.pathname); render(); };
 document.getElementById("q").addEventListener("input", e => { S.q = e.target.value; render(); });
 document.getElementById("projects-btn").addEventListener("click", () => {
   S.sel = null; S.view = S.view === "projects" ? null : "projects"; S.pjEdit = null;
@@ -778,7 +791,7 @@ document.addEventListener("keydown", e => {
 function maybeReload() {
   if (S.stale && !S.fresh && !["INPUT", "TEXTAREA", "SELECT"].includes(document.activeElement?.tagName) && (!window.Term || Term.idle())) location.reload();
 }
-function apply(d) { S.stale = !!S.build && d.build !== S.build; S.build ??= d.build; maybeReload(); S.dictation = !!d.dictation; document.body.classList.toggle("no-mic", !S.dictation); document.body.classList.toggle("no-jump", d.jump === false); document.body.classList.toggle("no-editor", !d.editor); S.cards = d.cards; S.haiku = d.haiku; S.board = d.board || S.board; document.documentElement.classList.toggle("planet-mars", d.planet === "mars"); render();
+function apply(d) { S.stale = !!S.build && d.build !== S.build; S.build ??= d.build; maybeReload(); S.dictation = !!d.dictation; document.body.classList.toggle("no-mic", !S.dictation); document.body.classList.toggle("no-jump", d.jump === false); document.body.classList.toggle("no-editor", !d.editor); S.cards = d.cards; S.terminals = d.terminals; S.haiku = d.haiku; S.board = d.board || S.board; document.documentElement.classList.toggle("planet-mars", d.planet === "mars"); render();
   // Лічильники панелі «Проєкти» оновлюємо разом із дошкою, але не посеред введення у формі.
   if (S.view === "projects" && !document.activeElement?.matches("input")) loadProjects(); }
 fetch("/api/board").then(r => r.json()).then(apply);

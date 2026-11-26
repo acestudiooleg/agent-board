@@ -73,7 +73,8 @@ def stop(cfg_path: Path, cfg: Config, seconds: float = 10) -> int:
     start_mark = system.proc_start(pid)
     os.kill(pid, signal.SIGTERM)
     end = time.monotonic() + seconds
-    while system.same_start(system.proc_start(pid), start_mark):
+    # Головний потік стає зомбі раніше за інші, а ті ще тримають порт: чекаємо й на порт.
+    while system.same_start(system.proc_start(pid), start_mark) or listening(cfg):
         if time.monotonic() > end:
             print("дошка не зупинилась за відведений час", file=sys.stderr)
             return 1

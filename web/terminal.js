@@ -84,6 +84,7 @@ window.Term = (() => {
       if (r.net) return again();
       ended = true;
       if (!r.closed && !r.live) toast(r.error || "Не вдалося відкрити термінал");
+      if (r.full && window.showTerminals) window.showTerminals();
       return draw();
     }
     key = r.key;
